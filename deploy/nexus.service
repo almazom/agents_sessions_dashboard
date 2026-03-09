@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent Nexus Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=pets
+WorkingDirectory=/home/pets/temp/sessions_landing
+Environment="PYTHONPATH=/home/pets/temp/sessions_landing"
+ExecStart=/usr/bin/python3 -m uvicorn backend.api.main:app --host 0.0.0.0 --port 18888
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

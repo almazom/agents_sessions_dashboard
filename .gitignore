@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment variables - IMPORTANT!
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+.next/
+out/
+# Frontend dependencies (exclude package.json, package-lock.json)
+frontend/node_modules/
+
+# Root level dependencies
+# package-lock.json  # Uncomment for deterministic builds
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database (optional - uncomment if needed)
+# *.db
+# *.sqlite
+
+# Secrets - NEVER COMMIT
+*.pem
+*.key
+secrets/
