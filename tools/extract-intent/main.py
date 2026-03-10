@@ -13,11 +13,11 @@ from typing import Any, Dict, List, Optional
 
 
 TOOL_NAME = "extract-intent"
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.2.0"
 PROMPT_ID = "intent-vector-ru"
 DEFAULT_MAX_STEPS = 5
-DEFAULT_PREFLIGHT_TIMEOUT = 3
-DEFAULT_RUNTIME_TIMEOUT = 20
+DEFAULT_PREFLIGHT_TIMEOUT = 30
+DEFAULT_RUNTIME_TIMEOUT = 60
 DEFAULT_PROVIDER_CHAIN = "auto"
 DEFAULT_FORMAT = "auto"
 STEP_NUMERALS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"]
@@ -30,6 +30,9 @@ def parse_args() -> argparse.Namespace:
         allow_abbrev=False,
     )
     parser.add_argument("--input", "-i", help="Path to one JSON or JSONL session file")
+    parser.add_argument("--project", help="Project folder; resolve the latest session file for this project before extraction")
+    parser.add_argument("--providers", default="all", help="Comma-separated provider list or 'all' when using --project")
+    parser.add_argument("--providers-config", help="Override provider catalog JSON path for --project resolution")
     parser.add_argument("--format", default=DEFAULT_FORMAT, choices=["auto", "json", "jsonl"], help="Source format")
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS, help="Intent step count, 3-7")
     parser.add_argument("--provider-chain", default=DEFAULT_PROVIDER_CHAIN, help="Provider chain for nx-cognize")
@@ -44,6 +47,57 @@ def parse_args() -> argparse.Namespace:
 
 def emit_error(message: str) -> None:
     print(message, file=sys.stderr)
+
+
+def resolve_latest_project_session(
+    project_path: str,
+    providers: str,
+    providers_config: Optional[str],
+    base_dir: Path,
+) -> Path:
+    collect_path = (base_dir.parent / "nx-collect" / "nx-collect").resolve()
+    if not collect_path.exists():
+        raise RuntimeError("nx-collect wrapper is not available")
+
+    command: List[str] = [
+        str(collect_path),
+        "--latest",
+        "--project",
+        project_path,
+        "--providers",
+        providers,
+        "--cognize-provider-chain",
+        "local",
+    ]
+    if providers_config:
+        command.extend(["--providers-config", providers_config])
+
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("nx-collect project lookup timed out after 120s") from exc
+    except OSError as exc:
+        raise RuntimeError(str(exc)) from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip() or f"nx-collect exited with code {completed.returncode}"
+        raise RuntimeError(detail)
+
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"nx-collect returned invalid JSON: {exc}") from exc
+
+    latest = payload.get("latest")
+    if not isinstance(latest, dict) or not latest.get("path"):
+        raise RuntimeError("nx-collect did not find a latest session for this project")
+    return Path(str(latest["path"])).expanduser()
 
 
 def build_result(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -66,7 +120,6 @@ def build_result(payload: Dict[str, Any]) -> Dict[str, Any]:
             "provider_attempts": meta.get("provider_attempts") or [],
         },
         "source": {
-            "path": source.get("path") or "",
             "format": source.get("format") or DEFAULT_FORMAT,
             "user_message_count": int(source.get("user_message_count") or 0),
             "first_user_message": summary.get("first_user_message") or "",
@@ -94,15 +147,18 @@ def validate_result(payload: Dict[str, Any]) -> None:
 
 
 def render_pretty(payload: Dict[str, Any]) -> str:
-    source = payload["source"]
-    meta = payload["meta"]
     intent = payload["intent"]
     lines = [
         "🧭 Вектор намерений",
-        f"📁 {source['path']}",
-        f"🤖 {meta['selected_provider']} · {meta['summary_source']}",
-        "",
     ]
+    summary = str(intent.get("summary") or "").strip()
+    if summary:
+        lines.extend([
+            f"📝 {summary}",
+            "",
+        ])
+    else:
+        lines.append("")
     for index, step in enumerate(intent["steps"]):
         lines.append(f"{STEP_NUMERALS[index]} {step}")
     return "\n".join(lines)
@@ -132,16 +188,29 @@ def main() -> int:
     if args.preflight_timeout < 1 or args.runtime_timeout < 1:
         emit_error("timeouts must be positive integers")
         return 2
-    if not args.input:
-        emit_error("the following arguments are required: --input/-i")
+    if bool(args.input) == bool(args.project):
+        emit_error("exactly one selector is required: --input/-i or --project")
         return 2
 
-    input_path = Path(args.input).expanduser()
+    base_dir = Path(__file__).resolve().parent
+    if args.project:
+        try:
+            input_path = resolve_latest_project_session(
+                project_path=args.project,
+                providers=args.providers,
+                providers_config=args.providers_config,
+                base_dir=base_dir,
+            )
+        except RuntimeError as exc:
+            emit_error(str(exc))
+            return 3
+    else:
+        input_path = Path(args.input).expanduser()
+
     if not input_path.exists():
         emit_error(f"input file not found: {input_path}")
         return 2
 
-    base_dir = Path(__file__).resolve().parent
     cognize_path = (base_dir.parent / "nx-cognize" / "nx-cognize").resolve()
     if not cognize_path.exists():
         emit_error("nx-cognize wrapper is not available")

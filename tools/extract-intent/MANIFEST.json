@@ -2,25 +2,41 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "tools/extract-intent/MANIFEST.json",
   "title": "extract-intent Tool Manifest",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "identity": {
     "name": "extract-intent",
     "description": "Extract 3-7 easy-to-read Russian intent steps from one JSON or JSONL session file",
     "stateless": true
   },
   "contracts": {
-    "input": "intent-extract-request@1.0.0",
-    "output": "intent-extract-result@1.0.0"
+    "input": "intent-extract-request@1.1.0",
+    "output": "intent-extract-result@1.1.0"
   },
   "cli": {
-    "usage": "tools/extract-intent/extract-intent --input <FILE> [--pretty]",
+    "usage": "tools/extract-intent/extract-intent (--input <FILE> | --project <DIR>) [--pretty]",
     "flags": [
       {
         "name": "--input",
         "short": "-i",
         "type": "string",
-        "required": true,
+        "required": false,
         "description": "Path to one JSON or JSONL session file"
+      },
+      {
+        "name": "--project",
+        "type": "string",
+        "description": "Project folder; resolve the latest matching session file before extraction"
+      },
+      {
+        "name": "--providers",
+        "type": "string",
+        "default": "all",
+        "description": "Comma-separated providers, used with --project"
+      },
+      {
+        "name": "--providers-config",
+        "type": "string",
+        "description": "Override provider catalog JSON path for --project"
       },
       {
         "name": "--format",
@@ -48,13 +64,13 @@
       {
         "name": "--preflight-timeout",
         "type": "integer",
-        "default": 3,
+        "default": 30,
         "description": "nx-cognize preflight timeout in seconds"
       },
       {
         "name": "--runtime-timeout",
         "type": "integer",
-        "default": 20,
+        "default": 60,
         "description": "nx-cognize runtime timeout in seconds"
       },
       {
