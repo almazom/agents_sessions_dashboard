@@ -220,7 +220,7 @@ def test_model_detection():
                                         model = entry.get("message", {}).get("model", "")
                                         if model:
                                             print(f"\nFound model '{model}' in {session_file.name}")
-                                except:
+                                except Exception:
                                     pass
 
 

@@ -13,7 +13,7 @@ from .parsers import (
 
 # Lazy import for watcher (optional dependency)
 try:
-    from .watcher import SessionWatcher, WatcherConfig
+    # from .watcher import SessionWatcher, WatcherConfig
     _watcher_available = True
 except ImportError:
     _watcher_available = False

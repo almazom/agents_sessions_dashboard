@@ -10,6 +10,7 @@ from .logging_utils import get_logger, log_event
 from .middleware import SecurityMiddleware
 from .scanner import session_scanner
 from .settings import settings
+from .routes import sessions_router, websocket_router, auth_router
 
 logger = get_logger("agent_nexus.app")
 
@@ -131,8 +132,6 @@ async def robots_txt():
     )
 
 
-# Import and include routers
-from .routes import sessions_router, websocket_router, auth_router
 app.include_router(sessions_router)
 app.include_router(websocket_router)
 app.include_router(auth_router)

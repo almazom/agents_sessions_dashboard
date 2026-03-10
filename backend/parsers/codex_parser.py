@@ -32,7 +32,6 @@ class CodexParser(SessionParser):
         git_branch = None
         cwd = ""
         agent_nickname = "Codex"
-        agent_role = ""
 
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -55,7 +54,6 @@ class CodexParser(SessionParser):
                         session_meta = payload
                         cwd = payload.get("cwd", "")
                         agent_nickname = payload.get("agent_nickname", "Codex")
-                        agent_role = payload.get("agent_role", "")
                         git_info = payload.get("git", {})
                         git_branch = git_info.get("branch")
 
@@ -116,7 +114,7 @@ class CodexParser(SessionParser):
                                         "step": step.get("step", ""),
                                         "status": step.get("status", "pending")
                                     })
-                            except:
+                            except Exception:
                                 pass
 
                     # Detect completion
@@ -246,7 +244,7 @@ class CodexParser(SessionParser):
                 last_time = datetime.fromisoformat(last_timestamp.replace("Z", "+00:00"))
                 if datetime.now(last_time.tzinfo) - last_time < timedelta(minutes=5):
                     return SessionStatus.ACTIVE
-            except:
+            except Exception:
                 pass
 
         return SessionStatus.ACTIVE

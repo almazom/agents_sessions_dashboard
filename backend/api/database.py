@@ -199,7 +199,7 @@ def get_metrics() -> Dict:
             try:
                 usage = json.loads(row[0])
                 total_tokens += usage.get("total_tokens", 0)
-            except:
+            except Exception:
                 pass
         
         return {

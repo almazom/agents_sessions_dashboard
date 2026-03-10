@@ -239,7 +239,6 @@ class PiParser(SessionParser):
         """
         if model:
             # Check if it's a non-default model
-            display_model = model
             if provider and provider != "pi":
                 provider_display = self.PROVIDER_DISPLAY.get(provider, provider)
                 return f"Pi ({provider_display}/{model})"
