@@ -12,7 +12,17 @@ Rules:
 - `--pretty` is the human terminal mode
 - always use `intent-vector-ru` prompt through `nx-cognize`
 - steps should be 3-7 items and easy to read in Russian
+- do not echo the source file path in the result payload or pretty output
+- `--project` is a thin orchestration mode: first resolve latest session via `nx-collect`, then run normal intent extraction
 
 Terminal view:
 - use `①②③④⑤⑥⑦`
 - keep the pretty mode compact and glanceable
+
+Examples:
+
+```bash
+extract-intent --input /full/path/to/session.jsonl --pretty
+extract-intent --project ~/temp/sessions_landing --pretty
+extract-intent --project ~/temp/sessions_landing --providers codex,claude,gemini,qwen,pi,kimi
+```

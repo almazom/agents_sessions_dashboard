@@ -59,6 +59,7 @@ CLI examples:
 ```bash
 tools/nx-collect/nx-collect --latest
 tools/nx-collect/nx-collect latest
+tools/nx-collect/nx-collect --latest --project ~/temp/sessions_landing
 tools/nx-collect/nx-collect --latest --providers codex,qwen
 tools/nx-collect/nx-collect --latest --timezone Europe/Moscow
 ```
@@ -68,3 +69,4 @@ Rule:
 - treat canonical session artifacts as the source of truth
 - do not mix cache/config JSON files into session collection output
 - if cognitive enrichment fails, keep the latest result and mark it as local fallback
+- `--project` should narrow latest lookup before any downstream cognitive tool runs
