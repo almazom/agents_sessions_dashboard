@@ -110,7 +110,7 @@ GitHub Actions:
 ## 📁 Структура
 
 ```
-agents_sessions/
+agents_sessions_dashboard/
 ├── backend/
 │   ├── api/           # FastAPI endpoints
 │   │   ├── main.py    # App + middleware

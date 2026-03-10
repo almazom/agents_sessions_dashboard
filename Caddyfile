@@ -7,7 +7,7 @@
 :{$NEXUS_PUBLIC_PORT:8888} {
 	# Enable logging
 	log {
-		output file /home/pets/zoo/agents_sessions/caddy.log
+		output file /home/pets/zoo/agents_sessions_dashboard/caddy.log
 	}
 
 	header {

@@ -25,7 +25,7 @@ Examples:
 
 ```bash
 extract-intent --input /full/path/to/session.jsonl --pretty
-extract-intent --project ~/zoo/agents_sessions --pretty
-extract-intent --project ~/zoo/agents_sessions --provider gemini --processing-provider gemini
-extract-intent --project ~/zoo/agents_sessions --providers codex,claude,gemini,qwen,pi,kimi
+extract-intent --project ~/zoo/agents_sessions_dashboard --pretty
+extract-intent --project ~/zoo/agents_sessions_dashboard --provider gemini --processing-provider gemini
+extract-intent --project ~/zoo/agents_sessions_dashboard --providers codex,claude,gemini,qwen,pi,kimi
 ```

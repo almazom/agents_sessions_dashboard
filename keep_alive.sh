@@ -1,7 +1,7 @@
 #!/bin/bash
 # Agent Nexus - Published stack watchdog
 # Запускать через cron каждую минуту:
-# * * * * * /home/pets/zoo/agents_sessions/keep_alive.sh
+# * * * * * /home/pets/zoo/agents_sessions_dashboard/keep_alive.sh
 
 set -euo pipefail
 

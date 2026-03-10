@@ -12,7 +12,7 @@
   },
   "query": {
     "mode": "latest",
-    "project": "/home/pets/zoo/agents_sessions",
+    "project": "/home/pets/zoo/agents_sessions_dashboard",
     "timezone": "Europe/Moscow",
     "live_within_minutes": 10,
     "active_within_minutes": 60,

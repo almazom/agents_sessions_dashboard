@@ -1,6 +1,6 @@
 {
   "source": {
-    "project": "/home/pets/zoo/agents_sessions",
+    "project": "/home/pets/zoo/agents_sessions_dashboard",
     "providers": [
       "codex",
       "claude",

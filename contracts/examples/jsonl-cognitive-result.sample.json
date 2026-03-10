@@ -15,7 +15,7 @@
     "available_providers": [
       "local"
     ],
-    "provider_state_path": "/home/pets/zoo/agents_sessions/tools/nx-cognize/provider-state.local.json",
+    "provider_state_path": "/home/pets/zoo/agents_sessions_dashboard/tools/nx-cognize/provider-state.local.json",
     "provider_attempts": [
       {
         "provider": "qwen",
