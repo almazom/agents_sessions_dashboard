@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=pets
-WorkingDirectory=/home/pets/temp/sessions_landing
-Environment="PYTHONPATH=/home/pets/temp/sessions_landing"
-EnvironmentFile=/home/pets/temp/sessions_landing/.env
+WorkingDirectory=/home/pets/zoo/agents_sessions
+Environment="PYTHONPATH=/home/pets/zoo/agents_sessions"
+EnvironmentFile=/home/pets/zoo/agents_sessions/.env
 ExecStart=/bin/sh -lc '/usr/bin/python3 -m uvicorn backend.api.main:app --host "${NEXUS_HOST:-0.0.0.0}" --port "${NEXUS_BACKEND_PORT:-18890}"'
 Restart=always
 RestartSec=5

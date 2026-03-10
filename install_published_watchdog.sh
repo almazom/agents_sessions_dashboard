@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-PROJECT_ROOT=/home/pets/temp/sessions_landing
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 TMP_CRON=$(mktemp)
 trap 'rm -f "$TMP_CRON"' EXIT
 

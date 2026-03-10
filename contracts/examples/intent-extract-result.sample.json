@@ -5,6 +5,7 @@
     "generated_at": "2026-03-10T11:05:00Z",
     "prompt_id": "intent-vector-ru",
     "selected_provider": "local",
+    "processing_provider": "local",
     "summary_source": "local_fallback",
     "provider_attempts": [
       {
@@ -16,6 +17,8 @@
     ]
   },
   "source": {
+    "harness_provider": "codex",
+    "provider": "codex",
     "format": "jsonl",
     "user_message_count": 18,
     "first_user_message": "Починить фильтр Сегодня.",

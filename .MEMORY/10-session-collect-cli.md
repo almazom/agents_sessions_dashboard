@@ -59,7 +59,7 @@ CLI examples:
 ```bash
 tools/nx-collect/nx-collect --latest
 tools/nx-collect/nx-collect latest
-tools/nx-collect/nx-collect --latest --project ~/temp/sessions_landing
+tools/nx-collect/nx-collect --latest --project ~/zoo/agents_sessions
 tools/nx-collect/nx-collect --latest --providers codex,qwen
 tools/nx-collect/nx-collect --latest --timezone Europe/Moscow
 ```

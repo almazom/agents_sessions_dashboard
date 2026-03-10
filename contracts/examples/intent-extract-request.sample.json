@@ -1,6 +1,6 @@
 {
   "source": {
-    "project": "/home/pets/temp/sessions_landing",
+    "project": "/home/pets/zoo/agents_sessions",
     "providers": [
       "codex",
       "claude",
@@ -13,6 +13,7 @@
     "max_steps": 5
   },
   "provider": {
+    "processing_provider": "gemini",
     "chain": [
       "qwen",
       "gemini",

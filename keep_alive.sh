@@ -1,11 +1,12 @@
 #!/bin/bash
 # Agent Nexus - Published stack watchdog
 # Запускать через cron каждую минуту:
-# * * * * * /home/pets/temp/sessions_landing/keep_alive.sh
+# * * * * * /home/pets/zoo/agents_sessions/keep_alive.sh
 
 set -euo pipefail
 
-PROJECT_ROOT=/home/pets/temp/sessions_landing
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 LOCK_FILE=/tmp/nexus-watchdog.lock
 LOG_FILE=/tmp/nexus-watchdog.log
 

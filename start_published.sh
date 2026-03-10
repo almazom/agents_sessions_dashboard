@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-PROJECT_ROOT=/home/pets/temp/sessions_landing
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
 cd "$PROJECT_ROOT"
 source "$PROJECT_ROOT/config/runtime.sh"
@@ -91,8 +92,8 @@ stop_pid_file /tmp/nexus-backend.pid
 stop_pid_file /tmp/nexus-frontend.pid
 pkill -f "uvicorn backend.api.main:app" 2>/dev/null || true
 pkill -f "$FRONTEND_STANDALONE_SERVER" 2>/dev/null || true
-pkill -f "/home/pets/temp/sessions_landing/frontend/node_modules/.bin/next start" 2>/dev/null || true
-pkill -f "/home/pets/temp/sessions_landing/frontend/node_modules/.bin/next dev" 2>/dev/null || true
+pkill -f "$PROJECT_ROOT/frontend/node_modules/.bin/next start" 2>/dev/null || true
+pkill -f "$PROJECT_ROOT/frontend/node_modules/.bin/next dev" 2>/dev/null || true
 fuser -k "${BACKEND_PORT}/tcp" >/dev/null 2>&1 || true
 fuser -k "${NEXUS_FRONTEND_PORT}/tcp" >/dev/null 2>&1 || true
 sleep "$NEXUS_PROCESS_STOP_WAIT_SECONDS"

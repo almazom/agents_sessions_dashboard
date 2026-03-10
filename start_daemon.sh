@@ -4,9 +4,11 @@
 
 set -e
 
-cd /home/pets/temp/sessions_landing
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-source /home/pets/temp/sessions_landing/config/runtime.sh
+cd "$PROJECT_ROOT"
+source "$PROJECT_ROOT/config/runtime.sh"
 load_runtime_config
 
 HEALTHCHECK_HOST=$NEXUS_HOST

@@ -4,8 +4,11 @@
 
 set -e
 
-cd /home/pets/temp/sessions_landing
-source /home/pets/temp/sessions_landing/config/runtime.sh
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+cd "$PROJECT_ROOT"
+source "$PROJECT_ROOT/config/runtime.sh"
 load_runtime_config
 
 # Вывод конфигурации (без пароля!)
