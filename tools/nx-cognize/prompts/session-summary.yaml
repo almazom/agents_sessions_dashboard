@@ -1,6 +1,8 @@
 id: session-summary
 description: Default cognitive summary prompt for JSON and JSONL session traces.
+task_sentence: "Summarize this session so a human can quickly understand the user's intent progression."
 template: |
+  Task: __TASK_SENTENCE__
   You analyze JSON or JSONL session traces.
   Return exactly one JSON object and nothing else.
   Do not use markdown fences.

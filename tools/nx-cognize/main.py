@@ -56,6 +56,7 @@ SEMANTIC_INTENT_RULES = [
     (re.compile(r"(фильтр.*сегодня|today filter|today\b)", re.IGNORECASE), "починить фильтр сегодня"),
     (re.compile(r"(sort|sorting|сортиров|active session|live session|latest session)", re.IGNORECASE), "исправить latest сортировку"),
     (re.compile(r"(latest.*card|card.*latest|карточк.*latest|latest карточк)", re.IGNORECASE), "исправить latest карточку"),
+    (re.compile(r"(intent bullets|intent card|карточк.*сесси|session card|карточк.*intent)", re.IGNORECASE), "усилить карточку сессии"),
     (re.compile(r"(полный путь|path to file|full path|path-only|путь к файлу)", re.IGNORECASE), "показать полный путь"),
     (re.compile(r"(playwright|e2e|published flow|published url|smoke pipeline|login pipeline)", re.IGNORECASE), "проверить published flow"),
     (re.compile(r"(contract-first|contract first|manifest|schema|cli contract|isolated cli)", re.IGNORECASE), "усилить contract-first cli"),
@@ -71,6 +72,12 @@ SEMANTIC_INTENT_RULES = [
     (re.compile(r"(shell|bash|xargs|ls -lt|run each command|run each comand|find /home|confirm.*shell)", re.IGNORECASE), "проверить shell команды"),
     (re.compile(r"(reasoning|ризанинг|последний измененный файл|точка кодекс|rollout-)", re.IGNORECASE), "объяснить поиск latest"),
 ]
+SUPPORT_INTENT_STEPS = {
+    "разложить docs по слоям",
+    "уточнить memory слой",
+    "проверить shell команды",
+    "объяснить поиск latest",
+}
 
 
 @dataclass
@@ -133,6 +140,7 @@ def load_prompt_spec(base_dir: Path, prompt_id: str) -> Dict[str, Any]:
         payload = yaml.safe_load(handle)
     if not isinstance(payload, dict) or "template" not in payload:
         raise ValueError(f"invalid prompt file: {prompt_path}")
+    payload.setdefault("task_sentence", "")
     return payload
 
 
@@ -349,6 +357,13 @@ def extract_words(text: str) -> List[str]:
     return WORD_PATTERN.findall(text)
 
 
+def clean_bullet_words(words: List[str]) -> List[str]:
+    cleaned = list(words)
+    while cleaned and cleaned[-1].lower() in STOPWORDS:
+        cleaned.pop()
+    return cleaned
+
+
 def build_packet(records: List[Dict[str, Any]], stats: Dict[str, int]) -> Dict[str, Any]:
     user_messages: List[str] = []
     snippets: List[str] = []
@@ -385,6 +400,7 @@ def render_prompt(
     template = str(prompt_spec["template"])
     return (
         template
+        .replace("__TASK_SENTENCE__", str(prompt_spec.get("task_sentence", "")))
         .replace("__MAX_BULLETS__", str(max_bullets))
         .replace("__MAX_WORDS_PER_BULLET__", str(max_words_per_bullet))
         .replace("__SOURCE_PACKET_JSON__", json.dumps(payload, ensure_ascii=False))
@@ -413,7 +429,7 @@ def extract_json_object(text: str) -> Dict[str, Any]:
 def clamp_bullets(bullets: List[str], max_bullets: int, max_words_per_bullet: int) -> List[str]:
     compacted = []
     for bullet in bullets:
-        words = extract_words(str(bullet))
+        words = clean_bullet_words(extract_words(str(bullet)))
         if not words:
             continue
         compacted.append(" ".join(words[:max_words_per_bullet]))
@@ -467,11 +483,13 @@ def sample_intent_messages(messages: List[str], limit: int) -> List[str]:
 def local_intent_steps(packet: Dict[str, Any], max_bullets: int, max_words_per_bullet: int) -> List[str]:
     user_messages = packet["user_messages"]
     topic_list = topic_keywords(user_messages or packet["snippets"], limit=max_words_per_bullet)
-    steps = [
+    semantic_steps = dedupe_texts([
         semantic_intent_step(message, max_words_per_bullet)
         for message in sample_intent_messages(user_messages, max_bullets)
-    ]
-    cleaned_steps = dedupe_texts([step for step in steps if step])
+    ])
+    preferred_steps = [step for step in semantic_steps if step and step not in SUPPORT_INTENT_STEPS]
+    support_steps = [step for step in semantic_steps if step in SUPPORT_INTENT_STEPS]
+    cleaned_steps = preferred_steps + support_steps
 
     while len(cleaned_steps) < MIN_BULLETS:
         filler = " ".join(topic_list[:max_words_per_bullet]) or "понять ход этой сессии"
@@ -481,6 +499,23 @@ def local_intent_steps(packet: Dict[str, Any], max_bullets: int, max_words_per_b
             cleaned_steps.append(f"шаг {len(cleaned_steps) + 1} этой сессии")
 
     return cleaned_steps[:max_bullets]
+
+
+def build_intent_summary_ru(intent_steps: List[str]) -> str:
+    if not intent_steps:
+        return "Пользователь хочет понять, куда движется эта сессия."
+
+    highlighted_steps = [step for step in intent_steps if step not in SUPPORT_INTENT_STEPS][:3]
+    if not highlighted_steps:
+        highlighted_steps = intent_steps[:3]
+    if len(highlighted_steps) == 1:
+        return f"Пользователь хочет {highlighted_steps[0]}."
+    if len(highlighted_steps) == 2:
+        return f"Пользователь хочет {highlighted_steps[0]} и {highlighted_steps[1]}."
+    return (
+        f"Пользователь хочет {highlighted_steps[0]}, "
+        f"{highlighted_steps[1]} и {highlighted_steps[2]}."
+    )
 
 
 def local_summary(
@@ -499,11 +534,7 @@ def local_summary(
     title_words = extract_words(title_source)
     title = " ".join(title_words[:6]) or " ".join(key_topics[:4]) or "Вектор пользовательских намерений"
     if prompt_id == "intent-vector-ru":
-        summary = (
-            "Семантическая выжимка показывает, как шаг за шагом двигались пользовательские намерения."
-            if user_messages else
-            "Семантическая выжимка построена по доступным следам пользовательской сессии."
-        )
+        summary = build_intent_summary_ru(intent_steps)
     else:
         summary = (
             "This file centers on user-driven instructions extracted from the source log."

@@ -1,10 +1,9 @@
 {
   "default_chain": [
-    "qwen",
     "gemini",
-    "claude",
     "pi",
-    "local"
+    "claude",
+    "qwen"
   ],
   "health_cache": {
     "state_file": "provider-state.local.json",
