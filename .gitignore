@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -64,3 +64,6 @@ tools/nx-cognize/provider-state.local.json
 *.key
 secrets/
 tmp/
+
+.pytest_cache/
+.ruff_cache/
