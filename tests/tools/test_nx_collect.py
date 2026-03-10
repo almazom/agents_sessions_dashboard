@@ -302,6 +302,43 @@ class NxCollectTests(unittest.TestCase):
             self.assertEqual(payload["latest"]["path"], str(qwen_file.resolve()))
             self.assertEqual(payload["latest"]["first_user_message"], "matching qwen project session")
 
+    def test_latest_accepts_single_provider_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            qwen_root = root / "qwen"
+            qwen_file = qwen_root / "project" / "chats" / "latest.jsonl"
+            write_jsonl(qwen_file, [{"role": "user", "content": "single provider alias"}])
+            os.utime(qwen_file, (1_850_000_000, 1_850_000_000))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["qwen"],
+                    "providers": {
+                        "qwen": {
+                            "root": str(qwen_root),
+                            "include": ["**/chats/*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--latest",
+                "--provider",
+                "qwen",
+                "--providers-config",
+                str(config_path),
+                "--timezone",
+                "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            self.assertEqual(payload["query"]["providers"], ["qwen"])
+            self.assertEqual(payload["latest"]["path"], str(qwen_file.resolve()))
+
     def test_gemini_json_sessions_extract_nested_user_messages(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
