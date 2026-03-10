@@ -1,0 +1,52 @@
+{
+  "version": "1.0.0",
+  "created_at": "2026-03-10T07:55:00Z",
+  "objective": "Establish the initial isolated CLI and documentation system for Agent Nexus",
+  "states": [
+    "TODO",
+    "DOING",
+    "DONE"
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Define initial docs and contracts",
+      "state": "DONE",
+      "contract_impact": [
+        "jsonl-cognitive-request@1.0.0",
+        "jsonl-cognitive-result@1.0.0"
+      ],
+      "acceptance_criteria": [
+        "PROFILE.md exists",
+        "AURA.md exists",
+        "PROTOCOL.json registers the contracts"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Create isolated nx-cognize CLI",
+      "state": "DONE",
+      "contract_impact": [
+        "jsonl-cognitive-result@1.0.0"
+      ],
+      "acceptance_criteria": [
+        "tools/nx-cognize exists",
+        "CLI runs on a real JSONL file",
+        "stdout emits structured JSON"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add provider fallback and state cache",
+      "state": "DONE",
+      "contract_impact": [
+        "jsonl-cognitive-result@1.0.0"
+      ],
+      "acceptance_criteria": [
+        "Providers can be preflighted in parallel",
+        "State cache tracks latency and last availability",
+        "Runtime order can prefer fastest recent provider"
+      ]
+    }
+  ]
+}

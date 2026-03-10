@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "PROTOCOL.json",
+  "title": "Agent Nexus Isolated CLI Protocol",
+  "version": "0.1.0",
+  "project": {
+    "name": "Agent Nexus",
+    "purpose": "Contract-first isolated CLI tools for cognitive operations over AI session JSON and JSONL files",
+    "paradigm": "contract-first, isolated tools, provider fallback chain"
+  },
+  "docs": {
+    "profile": "PROFILE.md",
+    "aura": "AURA.md",
+    "aura_latest": ".aura/latest/AURA.md",
+    "aura_dir": ".aura/",
+    "agents": "AGENTS.md"
+  },
+  "philosophy": {
+    "core_values": [
+      "Contract before code",
+      "One tool, one responsibility",
+      "Stdout for JSON, stderr for diagnostics",
+      "Provider fallback without hidden behavior",
+      "Isolation from backend and frontend"
+    ]
+  },
+  "contracts": {
+    "session-collect-request": {
+      "file": "contracts/session-collect-request.schema.json",
+      "version": "2.2.0",
+      "produced_by": [],
+      "consumed_by": [
+        "nx-collect"
+      ],
+      "description": "Request model for collecting canonical session artifacts across providers"
+    },
+    "session-collect-result": {
+      "file": "contracts/session-collect-result.schema.json",
+      "version": "2.2.0",
+      "produced_by": [
+        "nx-collect"
+      ],
+      "consumed_by": [],
+      "description": "Normalized result for latest-session collection queries with one global latest result"
+    },
+    "jsonl-cognitive-request": {
+      "file": "contracts/jsonl-cognitive-request.schema.json",
+      "version": "1.1.0",
+      "produced_by": [],
+      "consumed_by": [
+        "nx-cognize"
+      ],
+      "description": "Request model for cognitive operations over JSON and JSONL files"
+    },
+    "jsonl-cognitive-result": {
+      "file": "contracts/jsonl-cognitive-result.schema.json",
+      "version": "1.1.0",
+      "produced_by": [
+        "nx-cognize"
+      ],
+      "consumed_by": [],
+      "description": "Structured cognitive summary produced from a JSON or JSONL source file"
+    },
+    "intent-extract-request": {
+      "file": "contracts/intent-extract-request.schema.json",
+      "version": "1.0.0",
+      "produced_by": [],
+      "consumed_by": [
+        "extract-intent"
+      ],
+      "description": "Request model for the dedicated extract-intent CLI"
+    },
+    "intent-extract-result": {
+      "file": "contracts/intent-extract-result.schema.json",
+      "version": "1.0.0",
+      "produced_by": [
+        "extract-intent"
+      ],
+      "consumed_by": [],
+      "description": "Easy-to-read semantic intent result produced for one session file"
+    }
+  },
+  "tools": {
+    "nx-collect": {
+      "manifest": "tools/nx-collect/MANIFEST.json",
+      "position": 1,
+      "input_contract": "session-collect-request@2.2.0",
+      "output_contract": "session-collect-result@2.2.0",
+      "description": "Collect canonical session files across providers and return one global latest result",
+      "stateless": true
+    },
+    "nx-cognize": {
+      "manifest": "tools/nx-cognize/MANIFEST.json",
+      "position": 2,
+      "input_contract": "jsonl-cognitive-request@1.1.0",
+      "output_contract": "jsonl-cognitive-result@1.1.0",
+      "description": "Run a cognitive summary operation over JSON or JSONL using a provider fallback chain",
+      "stateless": true
+    },
+    "extract-intent": {
+      "manifest": "tools/extract-intent/MANIFEST.json",
+      "position": 3,
+      "input_contract": "intent-extract-request@1.0.0",
+      "output_contract": "intent-extract-result@1.0.0",
+      "description": "Dedicated user-facing CLI for 3-7 semantic Russian intent steps over one session file",
+      "stateless": true
+    }
+  },
+  "memory": {
+    "index": ".MEMORY/00-index.md",
+    "cards": [
+      ".MEMORY/ai-providers-preflight.md",
+      ".MEMORY/ai-providers-preflight-short-tip.md",
+      ".MEMORY/published-url-playwright.md",
+      ".MEMORY/06-jsonl-cognitive-cli.md",
+      ".MEMORY/07-provider-fallback-chain.md",
+      ".MEMORY/08-jsonl-cognitive-contracts.md",
+      ".MEMORY/09-session-management-workflow.md",
+      ".MEMORY/10-session-collect-cli.md",
+      ".MEMORY/11-latest-session-shell-tips.md"
+    ]
+  }
+}

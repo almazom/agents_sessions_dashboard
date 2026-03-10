@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tools/tool-name/MANIFEST.json",
+  "title": "tool-name Tool Manifest",
+  "version": "1.0.0",
+  "identity": {
+    "name": "tool-name",
+    "description": "One isolated CLI responsibility",
+    "stateless": true
+  },
+  "contracts": {
+    "input": "input-contract@1.0.0",
+    "output": "output-contract@1.0.0"
+  },
+  "cli": {
+    "usage": "tools/tool-name/tool-name --input <FILE>",
+    "flags": [],
+    "exit_codes": {
+      "0": "Success",
+      "1": "Internal error",
+      "2": "Invalid arguments",
+      "3": "Dependency or provider failure",
+      "4": "Parse or contract violation"
+    }
+  },
+  "files": {
+    "required": [
+      "main.py",
+      "tool-name"
+    ]
+  }
+}
