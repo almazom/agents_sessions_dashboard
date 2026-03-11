@@ -502,6 +502,334 @@ class NxCollectTests(unittest.TestCase):
                 "сделать latest карточку добавить intent",
             ])
 
+    def test_date_today_returns_only_today_sessions(self) -> None:
+        """Test --date today filters sessions modified today."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            
+            # Today's session
+            today_file = codex_root / "2026" / "03" / "11" / "rollout-today.jsonl"
+            write_jsonl(today_file, [{"role": "user", "content": "today session"}])
+            
+            # Yesterday's session
+            yesterday_file = codex_root / "2026" / "03" / "10" / "rollout-yesterday.jsonl"
+            write_jsonl(yesterday_file, [{"role": "user", "content": "yesterday session"}])
+            
+            now = time.time()
+            os.utime(today_file, (now, now))
+            os.utime(yesterday_file, (now - 86400, now - 86400))  # 1 day ago
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["**/rollout-*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "today",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            self.assertIn("sessions", payload)
+            self.assertEqual(len(payload["sessions"]), 1)
+            self.assertEqual(payload["sessions"][0]["provider"], "codex")
+            self.assertIn("rollout-today.jsonl", payload["sessions"][0]["path"])
+
+    def test_date_yesterday_returns_only_yesterday_sessions(self) -> None:
+        """Test --date yesterday filters sessions modified yesterday."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            
+            today_file = codex_root / "2026" / "03" / "11" / "rollout-today.jsonl"
+            yesterday_file = codex_root / "2026" / "03" / "10" / "rollout-yesterday.jsonl"
+            
+            write_jsonl(today_file, [{"role": "user", "content": "today"}])
+            write_jsonl(yesterday_file, [{"role": "user", "content": "yesterday"}])
+            
+            now = time.time()
+            os.utime(today_file, (now, now))
+            os.utime(yesterday_file, (now - 86400, now - 86400))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["**/rollout-*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "yesterday",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            self.assertEqual(len(payload["sessions"]), 1)
+            self.assertIn("rollout-yesterday.jsonl", payload["sessions"][0]["path"])
+
+    def test_date_specific_date_returns_matching_sessions(self) -> None:
+        """Test --date YYYY-MM-DD filters sessions for specific date."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            
+            target_file = codex_root / "2026" / "03" / "05" / "rollout-target.jsonl"
+            other_file = codex_root / "2026" / "03" / "10" / "rollout-other.jsonl"
+            
+            write_jsonl(target_file, [{"role": "user", "content": "target date"}])
+            write_jsonl(other_file, [{"role": "user", "content": "other date"}])
+            
+            # March 5, 2026
+            target_ts = datetime(2026, 3, 5, 12, 0, tzinfo=timezone.utc).timestamp()
+            # March 10, 2026
+            other_ts = datetime(2026, 3, 10, 12, 0, tzinfo=timezone.utc).timestamp()
+            
+            os.utime(target_file, (target_ts, target_ts))
+            os.utime(other_file, (other_ts, other_ts))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["**/rollout-*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "2026-03-05",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            self.assertEqual(len(payload["sessions"]), 1)
+            self.assertIn("rollout-target.jsonl", payload["sessions"][0]["path"])
+
+    def test_date_last_n_days_returns_sessions_in_range(self) -> None:
+        """Test --date last-N-days filters sessions within N days."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            
+            # Sessions at different ages
+            recent_file = codex_root / "recent.jsonl"
+            week_ago_file = codex_root / "week-ago.jsonl"
+            old_file = codex_root / "old.jsonl"
+            
+            write_jsonl(recent_file, [{"role": "user", "content": "recent"}])
+            write_jsonl(week_ago_file, [{"role": "user", "content": "week ago"}])
+            write_jsonl(old_file, [{"role": "user", "content": "old"}])
+            
+            now = time.time()
+            os.utime(recent_file, (now, now))
+            os.utime(week_ago_file, (now - 5 * 86400, now - 5 * 86400))  # 5 days ago
+            os.utime(old_file, (now - 10 * 86400, now - 10 * 86400))  # 10 days ago
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "last-7-days",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            # Should include recent and week_ago, but not old
+            self.assertEqual(len(payload["sessions"]), 2)
+            paths = [s["path"] for s in payload["sessions"]]
+            self.assertTrue(any("recent" in p for p in paths))
+            self.assertTrue(any("week-ago" in p for p in paths))
+            self.assertFalse(any("old" in p for p in paths))
+
+    def test_date_with_project_filters_by_project_and_date(self) -> None:
+        """Test --date with --project filters by both."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            project_path = root / "my_project"
+            other_project = root / "other_project"
+            qwen_root = root / "qwen"
+            
+            # Matching project, today
+            match_file = qwen_root / "-tmp" / f"-{project_path.as_posix().strip('/').replace('/', '-')}" / "chats" / "latest.jsonl"
+            # Matching project, yesterday
+            old_match_file = qwen_root / "-tmp" / f"-{project_path.as_posix().strip('/').replace('/', '-')}" / "chats" / "old.jsonl"
+            # Other project, today
+            other_file = qwen_root / "-tmp" / f"-{other_project.as_posix().strip('/').replace('/', '-')}" / "chats" / "other.jsonl"
+            
+            write_jsonl(match_file, [{"role": "user", "content": "match"}])
+            write_jsonl(old_match_file, [{"role": "user", "content": "old match"}])
+            write_jsonl(other_file, [{"role": "user", "content": "other"}])
+            
+            now = time.time()
+            os.utime(match_file, (now, now))
+            os.utime(old_match_file, (now - 86400, now - 86400))
+            os.utime(other_file, (now, now))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["qwen"],
+                    "providers": {
+                        "qwen": {
+                            "root": str(qwen_root),
+                            "include": ["**/chats/*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "today",
+                "--project", str(project_path),
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            self.assertEqual(len(payload["sessions"]), 1)
+            self.assertIn("latest.jsonl", payload["sessions"][0]["path"])
+
+    def test_date_pretty_renders_human_friendly_list(self) -> None:
+        """Test --date with --pretty renders human-friendly output."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            qwen_root = root / "qwen"
+            
+            codex_file = codex_root / "today.jsonl"
+            qwen_file = qwen_root / "chats" / "today.jsonl"
+            
+            write_jsonl(codex_file, [{"role": "user", "content": "codex today"}])
+            write_jsonl(qwen_file, [{"role": "user", "content": "qwen today"}])
+            
+            now = time.time()
+            os.utime(codex_file, (now, now))
+            os.utime(qwen_file, (now - 3600, now - 3600))  # 1 hour ago
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex", "qwen"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["*.jsonl"],
+                            "exclude": [],
+                        },
+                        "qwen": {
+                            "root": str(qwen_root),
+                            "include": ["**/*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "today",
+                "--pretty",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            
+            # Check pretty output format
+            self.assertIn("📋", completed.stdout)
+            self.assertIn("codex", completed.stdout)
+            self.assertIn("qwen", completed.stdout)
+            self.assertNotIn('"meta"', completed.stdout)  # Not JSON
+
+    def test_sessions_includes_provider_and_path_details(self) -> None:
+        """Test sessions array includes all required fields."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            session_file = codex_root / "session.jsonl"
+            
+            write_jsonl(session_file, [{"role": "user", "content": "test"}])
+            now = time.time()
+            os.utime(session_file, (now, now))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            completed = self.run_cli(
+                "--date", "today",
+                "--providers-config", str(config_path),
+                "--timezone", "UTC",
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            
+            session = payload["sessions"][0]
+            self.assertEqual(session["provider"], "codex")
+            self.assertIn("path", session)
+            self.assertIn("relative_path", session)
+            self.assertIn("modified_at", session)
+            self.assertIn("modified_human", session)
+            self.assertIn("activity_state", session)
+
 
 if __name__ == "__main__":
     unittest.main()
