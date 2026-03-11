@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -325,6 +327,41 @@ class ExtractIntentTests(unittest.TestCase):
             harness_provider="pi",
         )
         self.assertEqual(resolved, "gemini,claude,qwen")
+
+    def test_root_wrapper_can_be_copied_to_local_bin_after_repo_rename(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            home = Path(tmpdir)
+            launcher_dir = home / ".local" / "bin"
+            launcher_path = launcher_dir / "extract-intent"
+            launcher_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO_ROOT / "extract-intent", launcher_path)
+            launcher_path.chmod(0o755)
+
+            repo_root = home / "zoo" / "renamed_agent_nexus"
+            tool_path = repo_root / "tools" / "extract-intent" / "extract-intent"
+            tool_path.parent.mkdir(parents=True, exist_ok=True)
+            (repo_root / "PROTOCOL.json").write_text("{}\n", encoding="utf-8")
+            tool_path.write_text(
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                "printf 'resolved:%s\\n' \"$0\"\n",
+                encoding="utf-8",
+            )
+            tool_path.chmod(0o755)
+
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+            env["PATH"] = f"{launcher_dir}:{env.get('PATH', '')}"
+
+            completed = subprocess.run(
+                [str(launcher_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn(str(tool_path), completed.stdout.strip())
 
 
 if __name__ == "__main__":

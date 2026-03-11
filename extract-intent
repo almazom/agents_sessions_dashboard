@@ -1,5 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-ROOT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+TOOL_PATH_SUFFIX="tools/extract-intent/extract-intent"
+SEARCH_ROOT="${HOME}/zoo"
+
+has_tool_wrapper() {
+  local repo_root="${1:-}"
+  [[ -n "$repo_root" ]] && [[ -x "$repo_root/$TOOL_PATH_SUFFIX" ]]
+}
+
+print_canonical_dir() {
+  local repo_root="$1"
+  printf '%s\n' "$(cd "$repo_root" && pwd)"
+}
+
+find_repo_root() {
+  local script_path script_dir candidate repo_root
+
+  script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+  script_dir="$(cd "$(dirname "$script_path")" && pwd)"
+  if has_tool_wrapper "$script_dir"; then
+    print_canonical_dir "$script_dir"
+    return 0
+  fi
+
+  if has_tool_wrapper "${AGENT_NEXUS_ROOT:-}"; then
+    print_canonical_dir "${AGENT_NEXUS_ROOT}"
+    return 0
+  fi
+
+  if [[ ! -d "$SEARCH_ROOT" ]]; then
+    return 1
+  fi
+
+  while IFS= read -r candidate; do
+    repo_root="${candidate%/$TOOL_PATH_SUFFIX}"
+    if [[ -f "$repo_root/PROTOCOL.json" ]]; then
+      print_canonical_dir "$repo_root"
+      return 0
+    fi
+  done < <(find "$SEARCH_ROOT" -maxdepth 6 -type f -path "*/$TOOL_PATH_SUFFIX" 2>/dev/null | sort)
+
+  return 1
+}
+
+ROOT_DIR="$(find_repo_root)" || {
+  echo "extract-intent launcher could not locate the repository root. Reinstall the global wrapper or set AGENT_NEXUS_ROOT." >&2
+  exit 127
+}
+
 exec "$ROOT_DIR/tools/extract-intent/extract-intent" "$@"
