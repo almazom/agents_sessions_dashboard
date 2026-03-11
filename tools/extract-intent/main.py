@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 
 TOOL_NAME = "extract-intent"
-TOOL_VERSION = "1.7.0"
+TOOL_VERSION = "1.8.0"
 PROMPT_ID = "intent-vector-ru"
 DEFAULT_MAX_STEPS = 5
 DEFAULT_PREFLIGHT_TIMEOUT = 30
@@ -40,6 +40,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--providers", default="all", help="Comma-separated provider list or 'all' when using --project")
     parser.add_argument("--providers-config", help="Override provider catalog JSON path for --project resolution")
+    parser.add_argument("--date", help="List sessions by date: today, yesterday, week, YYYY-MM-DD, or last-N-days")
+
     parser.add_argument("--format", default=DEFAULT_FORMAT, choices=["auto", "json", "jsonl"], help="Source format")
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS, help="Intent step count, 3-7")
     parser.add_argument("--processing-provider", "--pp", help="Single AI provider used for semantic summary, e.g. gemini or pi")
@@ -47,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state-file", help="Override nx-cognize provider state cache path")
     parser.add_argument("--preflight-timeout", type=int, default=DEFAULT_PREFLIGHT_TIMEOUT, help="Preflight timeout in seconds")
     parser.add_argument("--runtime-timeout", type=int, default=DEFAULT_RUNTIME_TIMEOUT, help="Runtime timeout in seconds")
+    parser.add_argument("--timezone", default="Europe/Moscow", help="Timezone for date filtering (default: Europe/Moscow)")
     parser.add_argument("--pretty", action="store_true", help="Render a human-friendly terminal view instead of JSON")
     parser.add_argument("--output", "-o", help="Write JSON or pretty text to file instead of stdout")
     parser.add_argument("--version", action="store_true", help="Show version")
@@ -92,6 +95,55 @@ def resolve_effective_processing_chain(
     if filtered:
         return ",".join(filtered)
     return explicit
+
+
+
+def list_sessions_by_date(
+    date_filter: str,
+    project_path: Optional[str],
+    providers: str,
+    providers_config: Optional[str],
+    timezone: str,
+    base_dir: Path,
+) -> Dict[str, Any]:
+    """List sessions filtered by date using nx-collect."""
+    collect_path = (base_dir.parent / "nx-collect" / "nx-collect").resolve()
+    if not collect_path.exists():
+        raise RuntimeError("nx-collect wrapper is not available")
+
+    command: List[str] = [
+        str(collect_path),
+        "--date", date_filter,
+        "--providers", providers,
+        "--cognize-provider-chain", "local",
+        "--timezone", timezone,
+    ]
+    if project_path:
+        command.extend(["--project", project_path])
+    if providers_config:
+        command.extend(["--providers-config", providers_config])
+
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("nx-collect timed out after 120s") from exc
+    except OSError as exc:
+        raise RuntimeError(str(exc)) from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip() or f"nx-collect exited with code {completed.returncode}"
+        raise RuntimeError(detail)
+
+    try:
+        return json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"nx-collect returned invalid JSON: {exc}") from exc
 
 
 def resolve_latest_project_session(
@@ -197,6 +249,40 @@ def validate_result(payload: Dict[str, Any]) -> None:
         raise ValueError("intent.steps must contain 3-7 items")
 
 
+
+def render_sessions_pretty(payload: Dict[str, Any]) -> str:
+    """Render sessions list in human-friendly format."""
+    sessions = payload.get("sessions", [])
+    query = payload.get("query", {})
+    date_filter = query.get("date_filter", "unknown")
+    
+    date_labels = {
+        "today": "сегодня",
+        "yesterday": "вчера", 
+        "week": "неделю",
+    }
+    label = date_labels.get(date_filter, date_filter)
+    
+    lines = [f"📋 Сессии за {label} ({len(sessions)})"]
+    lines.append("━" * 40)
+    lines.append("")
+    
+    for s in sessions:
+        provider = s.get("provider", "?")
+        modified = s.get("modified_human", "?")
+        path = s.get("path", "?")
+        activity = s.get("activity_state", "unknown")
+        
+        activity_icons = {"live": "🟢", "active": "🟡", "idle": "⚪"}
+        icon = activity_icons.get(activity, "⚪")
+        
+        lines.append(f"{icon} {provider} · {modified}")
+        lines.append(f"   {path}")
+        lines.append("")
+    
+    return "\n".join(lines)
+
+
 def render_pretty(payload: Dict[str, Any]) -> str:
     meta = payload["meta"]
     source = payload["source"]
@@ -247,17 +333,48 @@ def main() -> int:
     if args.preflight_timeout < 1 or args.runtime_timeout < 1:
         emit_error("timeouts must be positive integers")
         return 2
-    if args.harness_provider and not args.project:
+    if args.harness_provider and not args.project and not args.date:
         emit_error("--harness-provider/--hp can be used only together with --project")
         return 2
     if args.processing_provider and args.processing_provider not in {"qwen", "gemini", "claude", "pi", "local"}:
         emit_error("--processing-provider must be one of: qwen, gemini, claude, pi, local")
         return 2
-    if bool(args.input) == bool(args.project):
-        emit_error("exactly one selector is required: --input/-i or --project")
-        return 2
+    has_date = bool(args.date)
+    has_input = bool(args.input)
+    has_project = bool(args.project)
+    
+    if has_date:
+        # --date mode: list sessions
+        if has_input:
+            emit_error("--date cannot be used with --input")
+            return 2
+    else:
+        if has_input == has_project:
+            emit_error("exactly one selector is required: --input/-i or --project")
+            return 2
 
     base_dir = Path(__file__).resolve().parent
+    
+    # Handle --date mode: list sessions
+    if args.date:
+        try:
+            provider_spec = resolve_source_provider_spec(args.harness_provider, args.providers)
+            result = list_sessions_by_date(
+                date_filter=args.date,
+                project_path=args.project,
+                providers=provider_spec,
+                providers_config=args.providers_config,
+                timezone=args.timezone,
+                base_dir=base_dir,
+            )
+        except RuntimeError as exc:
+            emit_error(str(exc))
+            return 3
+        
+        rendered = render_sessions_pretty(result) if args.pretty else json.dumps(result, ensure_ascii=False, indent=2)
+        write_output(rendered, args.output)
+        return 0
+    
     source_provider = ""
     if args.project:
         try:
