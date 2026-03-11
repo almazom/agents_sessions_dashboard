@@ -49,7 +49,7 @@
       {
         "name": "--date",
         "type": "string",
-        "description": "Filter sessions by date: today, yesterday, YYYY-MM-DD, or last-N-days"
+        "description": "Filter sessions by date: today, yesterday, week, YYYY-MM-DD, or last-N-days"
       },
       {
         "name": "--pretty",

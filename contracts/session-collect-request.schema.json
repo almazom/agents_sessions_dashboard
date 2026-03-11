@@ -64,7 +64,7 @@
         "date_filter": {
           "type": "string",
           "description": "Filter sessions by date: today, yesterday, YYYY-MM-DD, or last-N-days",
-          "pattern": "^(today|yesterday|\\d{4}-\\d{2}-\\d{2}|last-\\d+-days?)$"
+          "pattern": "^(today|yesterday|week|\\d{4}-\\d{2}-\\d{2}|last-\\d+-days?)$"
         },
         "live_within_minutes": {
           "type": "integer",

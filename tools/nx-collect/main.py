@@ -139,7 +139,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output", "-o", help="Write result JSON to file instead of stdout")
     parser.add_argument("--version", action="store_true", help="Show version")
-    parser.add_argument("--date", help="Filter sessions by date: today, yesterday, YYYY-MM-DD, or last-N-days")
+    parser.add_argument("--date", help="Filter sessions by date: today, yesterday, week, YYYY-MM-DD, or last-N-days")
     parser.add_argument("--pretty", action="store_true", help="Render human-friendly terminal view instead of JSON")
     return parser.parse_args()
 
@@ -173,6 +173,7 @@ def parse_date_filter(date_spec: str, tzinfo: timezone | ZoneInfo) -> Tuple[date
     - today: from 00:00 today to now
     - yesterday: from 00:00 yesterday to 00:00 today
     - YYYY-MM-DD: specific date from 00:00 to 23:59:59
+    - week: last 7 days from now
     - last-N-days: last N days from now
     """
     now = datetime.now(tzinfo)
@@ -182,6 +183,10 @@ def parse_date_filter(date_spec: str, tzinfo: timezone | ZoneInfo) -> Tuple[date
     
     if spec == "today":
         return today_start.astimezone(timezone.utc), now.astimezone(timezone.utc)
+    
+    if spec == "week":
+        start = (today_start - timedelta(days=6)).astimezone(timezone.utc)
+        return start, now.astimezone(timezone.utc)
     
     if spec == "yesterday":
         yesterday_start = today_start - timedelta(days=1)
@@ -204,7 +209,7 @@ def parse_date_filter(date_spec: str, tzinfo: timezone | ZoneInfo) -> Tuple[date
     except ValueError:
         pass
     
-    raise ValueError(f"Invalid date filter: {date_spec}. Use: today, yesterday, YYYY-MM-DD, or last-N-days")
+    raise ValueError(f"Invalid date filter: {date_spec}. Use: today, yesterday, week, YYYY-MM-DD, or last-N-days")
 
 
 def filter_candidates_by_date(
