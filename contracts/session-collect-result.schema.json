@@ -2,11 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "session-collect-result.schema.json",
   "title": "SessionCollectResult",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "type": "object",
   "required": [
     "meta",
     "query",
+    "sessions",
     "latest",
     "errors"
   ],
@@ -60,7 +61,8 @@
         "mode": {
           "type": "string",
           "enum": [
-            "latest"
+            "latest",
+            "list"
           ]
         },
         "providers": {
@@ -71,6 +73,10 @@
         },
         "project": {
           "type": "string"
+        },
+        "date_filter": {
+          "type": "string",
+          "description": "Date filter applied: today, yesterday, YYYY-MM-DD, or last-N-days"
         },
         "timezone": {
           "type": "string"
@@ -94,6 +100,13 @@
         }
       },
       "additionalProperties": false
+    },
+    "sessions": {
+      "type": "array",
+      "description": "List of sessions matching the query (populated in list mode)",
+      "items": {
+        "$ref": "#/definitions/sessionSummary"
+      }
     },
     "latest": {
       "anyOf": [
@@ -121,7 +134,7 @@
           "stage": {
             "type": "string",
             "enum": [
-            "scan",
+              "scan",
               "parse",
               "cognize"
             ]
