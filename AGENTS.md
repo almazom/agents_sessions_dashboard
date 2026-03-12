@@ -279,7 +279,7 @@ Rule:
 Required flow:
 
 1. local verification
-2. `./start_published.sh`
+2. `./scripts/start_published.sh`
 3. verify live backend/frontend
 4. verify published URL with Playwright
 

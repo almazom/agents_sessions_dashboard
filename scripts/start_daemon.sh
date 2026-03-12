@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 source "$PROJECT_ROOT/config/runtime.sh"

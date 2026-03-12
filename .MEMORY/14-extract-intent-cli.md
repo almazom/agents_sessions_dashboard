@@ -5,8 +5,8 @@ Goal:
 
 Tool:
 - `tools/extract-intent/extract-intent`
-- convenience wrapper: `./extract-intent`
-- global install helper: `./install_extract_intent_global.sh`
+- convenience wrapper: `./scripts/extract-intent`
+- global install helper: `./scripts/install_extract_intent_global.sh`
 
 Rules:
 - default output is strict JSON
@@ -25,7 +25,7 @@ Terminal view:
 Examples:
 
 ```bash
-./install_extract_intent_global.sh
+./scripts/install_extract_intent_global.sh
 extract-intent --input /full/path/to/session.jsonl --pretty
 extract-intent --project ~/zoo/agents_sessions_dashboard --pretty
 extract-intent --project ~/zoo/agents_sessions_dashboard --provider gemini --processing-provider gemini

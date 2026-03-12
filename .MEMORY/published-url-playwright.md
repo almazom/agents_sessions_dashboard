@@ -22,7 +22,7 @@ Major-change rule:
 Minimal sequence:
 
 1. run local verification
-2. run `./start_published.sh`
+2. run `./scripts/start_published.sh`
 3. verify backend/frontend health endpoints
 4. open the published URL in Playwright
 5. verify auth flow, hydration, and critical API calls

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-ROOT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-SOURCE_PATH="${ROOT_DIR}/extract-intent"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+SOURCE_PATH="${SCRIPT_DIR}/extract-intent"
 TARGET_DIR="${HOME}/.local/bin"
 TARGET_PATH="${TARGET_DIR}/extract-intent"
 

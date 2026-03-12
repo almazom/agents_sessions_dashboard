@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 source "$PROJECT_ROOT/config/runtime.sh"
@@ -21,7 +21,7 @@ wait_for_url() {
     local delay_seconds=$3
 
     for _ in $(seq 1 "$attempts"); do
-        if curl -fsS "$url" >/dev/null; then
+        if curl -fsS --connect-timeout 1 --max-time 2 "$url" >/dev/null 2>&1; then
             return 0
         fi
         sleep "$delay_seconds"

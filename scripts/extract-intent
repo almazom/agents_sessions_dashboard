@@ -24,6 +24,12 @@ find_repo_root() {
     return 0
   fi
 
+  repo_root="$(cd "$script_dir/.." && pwd)"
+  if has_tool_wrapper "$repo_root"; then
+    print_canonical_dir "$repo_root"
+    return 0
+  fi
+
   if has_tool_wrapper "${AGENT_NEXUS_ROOT:-}"; then
     print_canonical_dir "${AGENT_NEXUS_ROOT}"
     return 0

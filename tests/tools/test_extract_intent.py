@@ -334,7 +334,7 @@ class ExtractIntentTests(unittest.TestCase):
             launcher_dir = home / ".local" / "bin"
             launcher_path = launcher_dir / "extract-intent"
             launcher_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(REPO_ROOT / "extract-intent", launcher_path)
+            shutil.copy2(REPO_ROOT / "scripts" / "extract-intent", launcher_path)
             launcher_path.chmod(0o755)
 
             repo_root = home / "zoo" / "renamed_agent_nexus"

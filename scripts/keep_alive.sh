@@ -1,12 +1,13 @@
 #!/bin/bash
 # Agent Nexus - Published stack watchdog
 # Запускать через cron каждую минуту:
-# * * * * * /home/pets/zoo/agents_sessions_dashboard/keep_alive.sh
+# * * * * * /home/pets/zoo/agents_sessions_dashboard/scripts/keep_alive.sh
 
 set -euo pipefail
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+SCRIPTS_DIR="${PROJECT_ROOT}/scripts"
 LOCK_FILE=/tmp/nexus-watchdog.lock
 LOG_FILE=/tmp/nexus-watchdog.log
 
@@ -61,7 +62,7 @@ fi
 
 log "Detected unhealthy published stack: backend=$backend_ok frontend=$frontend_ok public=$public_ok"
 
-if NEXUS_PLAYWRIGHT_CHECK_ENABLED="${NEXUS_PLAYWRIGHT_CHECK_ENABLED:-1}" "$PROJECT_ROOT/start_published.sh" >> "$LOG_FILE" 2>&1; then
+if NEXUS_PLAYWRIGHT_CHECK_ENABLED="${NEXUS_PLAYWRIGHT_CHECK_ENABLED:-1}" "$SCRIPTS_DIR/start_published.sh" >> "$LOG_FILE" 2>&1; then
     log "Published stack restarted successfully"
 else
     log "Published stack restart failed"
