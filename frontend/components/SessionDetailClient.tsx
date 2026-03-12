@@ -179,6 +179,111 @@ function formatSessionWindowValue(localValue?: string | null, isoValue?: string 
   return fallback;
 }
 
+const evidenceTokenStopwords = new Set([
+  'add',
+  'added',
+  'update',
+  'updated',
+  'fix',
+  'fixed',
+  'show',
+  'showed',
+  'create',
+  'created',
+  'use',
+  'used',
+  'file',
+  'files',
+  'frontend',
+  'backend',
+  'app',
+  'apps',
+  'component',
+  'components',
+  'page',
+  'pages',
+  'tests',
+  'test',
+]);
+
+function tokenizeEvidenceText(value: string): string[] {
+  return Array.from(new Set(
+    value
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё/._-]+/gi, ' ')
+      .split(/[\s/._-]+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3 && !evidenceTokenStopwords.has(token)),
+  ));
+}
+
+type CommitFileLink = {
+  commit: SessionArtifactResponse['session']['git_commits'][number];
+  files: Array<{ path: string; confidence: 'matched' | 'window-only'; score: number }>;
+  linkageLabel: string;
+};
+
+function buildEvidenceMatrixDirection(
+  intentEvolution: string[],
+  messageAnchors: { first: string; middle: string[]; last: string },
+): string[] {
+  const candidates = intentEvolution.length > 0
+    ? intentEvolution
+    : [messageAnchors.first, ...messageAnchors.middle, messageAnchors.last];
+
+  return candidates
+    .filter((item, index, values) => item && values.indexOf(item) === index)
+    .slice(0, 4);
+}
+
+function buildCommitFileLinks(
+  gitCommits: SessionArtifactResponse['session']['git_commits'],
+  filesModified: string[],
+): CommitFileLink[] {
+  return gitCommits.map((commit) => {
+    const commitTokens = tokenizeEvidenceText(commit.title);
+    const scoredFiles = filesModified
+      .map((filePath) => {
+        const overlap = tokenizeEvidenceText(filePath).filter((token) => commitTokens.includes(token));
+        return {
+          path: filePath,
+          confidence: 'matched' as const,
+          score: overlap.length,
+        };
+      })
+      .filter((item) => item.score > 0)
+      .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
+      .slice(0, 3);
+
+    if (scoredFiles.length > 0) {
+      return {
+        commit,
+        files: scoredFiles,
+        linkageLabel: 'linked by shared terms',
+      };
+    }
+
+    if (gitCommits.length === 1 && filesModified.length > 0) {
+      return {
+        commit,
+        files: filesModified.slice(0, 3).map((filePath) => ({
+          path: filePath,
+          confidence: 'window-only' as const,
+          score: 0,
+        })),
+        linkageLabel: 'same session window only',
+      };
+    }
+
+    return {
+      commit,
+      files: [],
+      linkageLabel: 'no direct file overlap yet',
+    };
+  });
+}
+
 interface Props {
   harness: string;
   artifactId: string;
@@ -416,6 +521,8 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   const gitRepositoryRoot = session?.git_repository_root || null;
   const topicThreads = session?.topic_threads || [];
   const timeWindow = session?.time_window;
+  const evidenceSparsity = session?.evidence_sparsity ?? null;
+  const filesModified = session?.files_modified || [];
   const defaultStateModel: SessionStateModel = {
     labels: session?.activity_state === 'live' ? ['live'] : ['archived'],
     safety_mode: 'read-only',
@@ -457,11 +564,18 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
     timeWindow?.ended_at || session?.ended_at,
   );
   const timeWindowDurationValue = timeWindow?.duration_human || session?.duration_human || '—';
+  const timeWindowScopeSummary = timeWindow?.scope_summary
+    || 'Коммиты, files modified и timeline ниже читаются только внутри этого окна сессии.';
   const timeWindowScope = [
     `${timelineEvents.length} timeline events`,
-    `${(session?.files_modified || []).length} file signals`,
+    `${filesModified.length} file signals`,
     `${gitCommits.length} commit signals`,
   ].join(' · ');
+  const evidenceMatrixDirection = buildEvidenceMatrixDirection(session?.intent_evolution || [], messageAnchors);
+  const commitFileLinks = buildCommitFileLinks(gitCommits, filesModified);
+  const linkedFiles = new Set(commitFileLinks.flatMap((entry) => entry.files.map((file) => file.path)));
+  const unmatchedFiles = filesModified.filter((filePath) => !linkedFiles.has(filePath));
+  const matrixTimelineItems = timelineEvents.slice(0, 4);
 
   return (
     <main data-testid="session-detail-page" className="min-h-screen p-6">
@@ -523,6 +637,244 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
             showMessageExtremes={false}
             intentBadgeText="derived layer"
           />
+
+          {evidenceSparsity?.is_sparse ? (
+            <section
+              data-testid="evidence-sparsity-notice"
+              className="mb-4 rounded-[28px] border border-amber-200 bg-[linear-gradient(135deg,#fff8e7_0%,#fffef7_48%,#ffffff_100%)] p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-amber-700">
+                    evidence gap
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                    Досье пока держится на тонком evidence stack
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-nexus-700">
+                    {evidenceSparsity.summary}
+                  </p>
+                </div>
+                <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-800">
+                  sparse evidence
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-[22px] border border-amber-200 bg-white/90 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Уже видно
+                  </div>
+                  {evidenceSparsity.present_layers.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {evidenceSparsity.present_layers.map((layer, index) => (
+                        <span
+                          key={`${layer}-${index}`}
+                          data-testid={`evidence-present-layer-${index}`}
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800"
+                        >
+                          {layer}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-sm text-nexus-600">
+                      Пока только source artifact без дополнительных подтверждающих слоёв.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-[22px] border border-amber-200 bg-white/90 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Пока отсутствует
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {evidenceSparsity.missing_layers.map((layer, index) => (
+                      <span
+                        key={`${layer}-${index}`}
+                        data-testid={`evidence-missing-layer-${index}`}
+                        className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+                      >
+                        {layer}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <section
+            data-testid="evidence-matrix"
+            className="mb-4 rounded-[28px] border border-[#d7e0ea] bg-[linear-gradient(135deg,#f6fbff_0%,#ffffff_42%,#fff9ef_100%)] p-5 shadow-sm"
+          >
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                  evidence matrix
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                  Сопоставление истории и repo signals
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-nexus-600">
+                  Здесь narrative, commits, files и timeline выстроены как одна история, чтобы не склеивать вывод из четырёх разрозненных блоков вручную.
+                </p>
+              </div>
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700">
+                aligned dossier
+              </span>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)_minmax(0,0.9fr)]">
+              <article className="rounded-[24px] border border-[#d7e0ea] bg-white/95 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    User direction
+                  </div>
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                    derived + source
+                  </span>
+                </div>
+                <div className="grid gap-3">
+                  {evidenceMatrixDirection.length > 0 ? evidenceMatrixDirection.map((item, index) => (
+                    <div
+                      key={`${index + 1}-${item}`}
+                      data-testid={`matrix-direction-item-${index}`}
+                      className="rounded-2xl border border-nexus-200 bg-[#fbfdff] px-4 py-3"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                        Step {index + 1}
+                      </div>
+                      <div className="mt-1 text-sm leading-6 text-nexus-800 whitespace-pre-wrap break-words">
+                        {item}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="rounded-2xl border border-dashed border-nexus-200 bg-[#fbfdff] px-4 py-6 text-sm text-nexus-500">
+                      User direction пока не извлечён из artifact достаточно явно.
+                    </div>
+                  )}
+                </div>
+              </article>
+
+              <article className="rounded-[24px] border border-[#d7e0ea] bg-white/95 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Repo outcome
+                  </div>
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                    commit ↔ file link
+                  </span>
+                </div>
+
+                <div className="grid gap-3">
+                  {commitFileLinks.length > 0 ? commitFileLinks.map((entry, index) => (
+                    <article
+                      key={`${entry.commit.hash}-${index}`}
+                      data-testid={`matrix-commit-link-${index}`}
+                      className="rounded-2xl border border-nexus-200 bg-[#fbfdff] p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-nexus-900">
+                          {entry.commit.title}
+                        </div>
+                        <span className="rounded-full border border-nexus-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-nexus-600">
+                          {entry.linkageLabel}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-nexus-500">
+                        {entry.commit.committed_at_local || formatTimelineTimestamp(entry.commit.committed_at)}
+                      </div>
+                      {entry.files.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {entry.files.map((file, fileIndex) => (
+                            <span
+                              key={`${file.path}-${fileIndex}`}
+                              data-testid={`matrix-commit-file-${index}-${fileIndex}`}
+                              className={`rounded-full border px-3 py-1.5 text-sm ${
+                                file.confidence === 'matched'
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                  : 'border-amber-200 bg-amber-50 text-amber-800'
+                              }`}
+                            >
+                              {file.path}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-sm text-nexus-500">
+                          Для этого commit title пока нет прямого file overlap внутри текущего окна.
+                        </div>
+                      )}
+                    </article>
+                  )) : filesModified.length > 0 ? (
+                    <div className="rounded-2xl border border-dashed border-nexus-200 bg-[#fbfdff] px-4 py-6 text-sm text-nexus-600">
+                      Files modified видны, но commit narrative внутри окна не зафиксирован. Это тоже полезный сигнал расхождения.
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-nexus-200 bg-[#fbfdff] px-4 py-6 text-sm text-nexus-500">
+                      Repo outcome внутри окна пока тонкий: ни commits, ни files modified ещё не объясняют развязку.
+                    </div>
+                  )}
+
+                  {unmatchedFiles.length > 0 ? (
+                    <div className="rounded-2xl border border-dashed border-nexus-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                        Files without clear commit narrative
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {unmatchedFiles.slice(0, 6).map((filePath, index) => (
+                          <span
+                            key={`${filePath}-${index}`}
+                            data-testid={`matrix-unmatched-file-${index}`}
+                            className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+                          >
+                            {filePath}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+
+              <article className="rounded-[24px] border border-[#d7e0ea] bg-white/95 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Window proof
+                  </div>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    artifact timeline
+                  </span>
+                </div>
+                <div className="grid gap-3">
+                  {matrixTimelineItems.length > 0 ? matrixTimelineItems.map((event, index) => (
+                    <div
+                      key={`${event.timestamp}-${event.description}-${index}`}
+                      data-testid={`matrix-timeline-item-${index}`}
+                      className="rounded-2xl border border-nexus-200 bg-[#fbfdff] px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-nexus-800">
+                          {formatTimelineLabel(event.event_type)}
+                        </div>
+                        <div className="text-xs text-nexus-500">
+                          {formatTimelineTimestamp(event.timestamp)}
+                        </div>
+                      </div>
+                      <div className="mt-1 text-sm leading-6 text-nexus-700 whitespace-pre-wrap break-words">
+                        {event.description}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="rounded-2xl border border-dashed border-nexus-200 bg-[#fbfdff] px-4 py-6 text-sm text-nexus-500">
+                      Artifact timeline ещё не собран. Пока остаются только narrative и repo-side hints.
+                    </div>
+                  )}
+                </div>
+              </article>
+            </div>
+          </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <article
@@ -600,7 +952,7 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     Что привязано к окну
                   </div>
                   <div className="mt-2 text-sm leading-6 text-nexus-800">
-                    Коммиты, files modified и timeline ниже читаются только внутри этого окна сессии.
+                    {timeWindowScopeSummary}
                   </div>
                   <div className="mt-1 text-xs text-nexus-500">
                     {timeWindowScope}
@@ -784,7 +1136,7 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     📝 Изменённые файлы
                   </div>
                   <div className="grid gap-2">
-                    {(session.files_modified || []).length > 0 ? session.files_modified.slice(0, 8).map((filePath) => (
+                    {filesModified.length > 0 ? filesModified.slice(0, 8).map((filePath) => (
                       <div key={filePath} className="font-mono text-[13px] text-nexus-700 break-all">
                         {filePath}
                       </div>

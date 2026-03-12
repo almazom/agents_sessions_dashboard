@@ -177,6 +177,11 @@ class SessionArtifactsTests(unittest.TestCase):
             self.assertEqual(payload["session"]["state_model"]["labels"], ["archived"])
             self.assertEqual(payload["session"]["state_model"]["safety_mode"], "read-only")
             self.assertIn("только для чтения", payload["session"]["state_model"]["summary"])
+            self.assertFalse(payload["session"]["evidence_sparsity"]["is_sparse"])
+            self.assertEqual(
+                payload["session"]["evidence_sparsity"]["present_layers"],
+                ["user messages", "artifact timeline", "files modified", "git commits"],
+            )
             self.assertEqual(
                 [event["event_type"] for event in payload["session"]["timeline"]],
                 ["user_message", "tool_call", "tool_call", "file_edit", "tool_call"],
@@ -239,6 +244,46 @@ class SessionArtifactsTests(unittest.TestCase):
         self.assertEqual(payload["session"]["state_model"]["labels"], ["live", "restorable"])
         self.assertEqual(payload["session"]["state_model"]["safety_mode"], "resume-allowed")
         self.assertTrue(payload["session"]["state_model"]["capabilities"]["can_resume"])
+
+    def test_build_session_detail_payload_treats_idle_active_session_as_archived_until_restore_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "rollout-demo.jsonl"
+            file_path.write_text(json.dumps({"type": "session_meta"}), encoding="utf-8")
+
+            with patch("backend.api.session_artifacts.build_session_git_commit_context", return_value={
+                "repository_root": None,
+                "commits": [],
+            }):
+                payload = build_session_detail_payload(
+                    {
+                        "session_id": "session-idle",
+                        "agent_type": "gemini",
+                        "agent_name": "Gemini",
+                        "cwd": "~/.gemini/tmp/agents-sessions-dashboard",
+                        "timestamp_start": "2026-03-10T08:00:00+00:00",
+                        "timestamp_end": "2026-03-10T08:05:00+00:00",
+                        "status": "active",
+                        "user_messages": ["check published stack"],
+                    },
+                    file_path,
+                    live_within_minutes=0,
+                    active_within_minutes=0,
+                )
+
+        self.assertEqual(payload["session"]["activity_state"], "idle")
+        self.assertEqual(payload["session"]["state_model"]["labels"], ["archived"])
+        self.assertEqual(payload["session"]["state_model"]["safety_mode"], "read-only")
+        self.assertIn("recent activity уже idle", payload["session"]["state_model"]["summary"])
+        self.assertIn(
+            "The source still says active, but the recent activity window is already cold.",
+            payload["session"]["state_model"]["rationale"],
+        )
+        self.assertTrue(payload["session"]["evidence_sparsity"]["is_sparse"])
+        self.assertEqual(payload["session"]["evidence_sparsity"]["present_layers"], ["user messages"])
+        self.assertEqual(
+            payload["session"]["evidence_sparsity"]["missing_layers"],
+            ["artifact timeline", "files modified", "git commits"],
+        )
 
     def test_build_timeline_keeps_non_consecutive_duplicate_event_types(self) -> None:
         class DummyParser(SessionParser):

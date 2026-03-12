@@ -136,6 +136,12 @@ type SessionArtifactPayload = {
         detail: string;
       };
     };
+    evidence_sparsity?: {
+      is_sparse: boolean;
+      summary: string;
+      present_layers: string[];
+      missing_layers: string[];
+    };
     route: {
       harness: string;
       id: string;
@@ -924,7 +930,10 @@ test.describe('Published URL end-to-end', () => {
             href: '/sessions/codex/rollout-second.jsonl',
           },
           tool_calls: ['exec_command'],
-          files_modified: ['frontend/app/page.tsx'],
+          files_modified: [
+            'frontend/components/SessionDetailClient.tsx',
+            'frontend/components/GitCommitBlock.tsx',
+          ],
           git_repository_root: '/home/pets/zoo/agents_sessions_dashboard',
           git_commits: [
             {
@@ -1013,9 +1022,172 @@ test.describe('Published URL end-to-end', () => {
     await expect(page.getByTestId('topic-threads')).toBeVisible();
     await expect(page.getByTestId('topic-thread-0')).toContainText('session detail');
     await expect(page.getByTestId('future-actions')).toBeVisible();
+    await expect(page.getByTestId('evidence-matrix')).toBeVisible();
+    await expect(page.getByTestId('matrix-direction-item-0')).toContainText('первый шаг');
+    await expect(page.getByTestId('matrix-commit-link-0')).toContainText('Add session detail route');
+    await expect(page.getByTestId('matrix-commit-file-0-0')).toContainText('SessionDetailClient.tsx');
+    await expect(page.getByTestId('matrix-commit-file-1-0')).toContainText('GitCommitBlock.tsx');
     await expect(page.getByTestId('session-state-model')).toContainText('read-only');
+    await expect(page.getByTestId('evidence-sparsity-notice')).toHaveCount(0);
     await expect(page.getByTestId('future-action-ask')).toContainText('Ask This Session');
     await expect(page.getByTestId('future-action-resume')).toContainText('Continue / Resume Session');
+  });
+
+  test('detail page shows sparse evidence cue and archived state for idle artifacts', async ({ page }) => {
+    await mockDashboardApis(page, {
+      latest: {
+        meta: {
+          scanned_providers: 6,
+          scanned_files: 1,
+        },
+        query: {
+          timezone: 'Europe/Moscow',
+        },
+        latest: {
+          provider: 'gemini',
+          path: '/home/pets/.gemini/tmp/agents-sessions-dashboard/logs.json',
+          relative_path: 'agents-sessions-dashboard/logs.json',
+          filename: 'logs.json',
+          session_id: 'agents-sessions-dashboard',
+          format: 'json',
+          modified_at: '2026-03-12T06:41:36+00:00',
+          modified_at_local: '2026-03-12 09:41:36 MSK',
+          modified_human: 'today at 09:41',
+          age_seconds: 3600,
+          age_human: '1 hour ago',
+          activity_state: 'idle',
+          record_count: 3,
+          parse_errors: 0,
+          user_message_count: 3,
+          first_user_message: 'start with git status via bash',
+          last_user_message: 'run linters',
+          intent_evolution: ['start with git status via bash'],
+          route: {
+            harness: 'gemini',
+            id: 'agents-sessions-dashboard',
+            href: '/sessions/gemini/agents-sessions-dashboard',
+          },
+        },
+        errors: [],
+      },
+      sessions: {
+        total: 0,
+        limit: 100,
+        offset: 0,
+        sessions: [],
+      },
+      metrics: {
+        success: true,
+        data: {
+          total_sessions: 1,
+          by_agent: { gemini: 1 },
+          by_status: { active: 1 },
+          total_tokens: 90,
+          last_updated: '2026-03-12T00:00:00Z',
+        },
+      },
+      detail: {
+        meta: {
+          timezone: 'Europe/Moscow',
+          live_within_minutes: 10,
+          active_within_minutes: 60,
+        },
+        session: {
+          provider: 'gemini',
+          path: '/home/pets/.gemini/tmp/agents-sessions-dashboard/logs.json',
+          filename: 'logs.json',
+          session_id: 'agents-sessions-dashboard',
+          cwd: '~/.gemini/tmp/agents-sessions-dashboard',
+          first_user_message: 'start with git status via bash',
+          last_user_message: 'run linters',
+          user_messages: [
+            'start with git status via bash',
+            'read all changes carefully',
+            'run linters',
+          ],
+          started_at: '2026-03-10T13:48:17+00:00',
+          started_at_local: '2026-03-10 16:48:17 MSK',
+          ended_at: '2026-03-12T06:41:36+00:00',
+          ended_at_local: '2026-03-12 09:41:36 MSK',
+          duration_seconds: 147799,
+          duration_human: '41 ч 3 мин',
+          time_window: {
+            source: 'session_artifact',
+            started_at: '2026-03-10T13:48:17+00:00',
+            started_at_local: '2026-03-10 16:48:17 MSK',
+            ended_at: '2026-03-12T06:41:36+00:00',
+            ended_at_local: '2026-03-12 09:41:36 MSK',
+            duration_seconds: 147799,
+            duration_human: '41 ч 3 мин',
+            scope_summary: 'Коммиты, files modified и timeline ниже читаются только внутри этого окна сессии.',
+          },
+          message_anchors: {
+            first: 'start with git status via bash',
+            middle: ['read all changes carefully'],
+            last: 'run linters',
+          },
+          intent_evolution: ['start with git status via bash'],
+          topic_threads: ['git status', 'linters'],
+          state_model: {
+            labels: ['archived'],
+            safety_mode: 'read-only',
+            summary: 'Artifact ещё помечен как active, но recent activity уже idle, поэтому detail page честно остаётся read-only до явного restore flow.',
+            rationale: [
+              'Observed status: active.',
+              'Observed activity state: idle.',
+              'The source still says active, but the recent activity window is already cold.',
+              'Resume stays disabled until a harness-specific restore flow exists.',
+              'Ask mode is enabled only when an explicit query layer is wired.',
+            ],
+            capabilities: {
+              can_ask: false,
+              can_resume: false,
+              can_restore: false,
+            },
+          },
+          evidence_sparsity: {
+            is_sparse: true,
+            summary: 'Evidence stack пока тонкий: user messages, artifact timeline доступны, но files modified, git commits отсутствуют в этом окне.',
+            present_layers: ['user messages', 'artifact timeline'],
+            missing_layers: ['files modified', 'git commits'],
+          },
+          route: {
+            harness: 'gemini',
+            id: 'agents-sessions-dashboard',
+            href: '/sessions/gemini/agents-sessions-dashboard',
+          },
+          tool_calls: [],
+          files_modified: [],
+          git_repository_root: null,
+          git_commits: [],
+          token_usage: {
+            total_tokens: 90,
+            input_tokens: 50,
+            output_tokens: 40,
+          },
+          timeline: [
+            {
+              timestamp: '2026-03-10T13:48:17+00:00',
+              event_type: 'user_message',
+              description: 'start with git status via bash',
+              icon: '💬',
+            },
+          ],
+        },
+      },
+    });
+
+    await page.goto('/sessions/gemini/agents-sessions-dashboard', {
+      waitUntil: 'domcontentloaded',
+    });
+
+    await expect(page.getByTestId('session-detail-page')).toBeVisible();
+    await expect(page.getByTestId('evidence-sparsity-notice')).toBeVisible();
+    await expect(page.getByTestId('evidence-sparsity-notice')).toContainText('Evidence stack пока тонкий');
+    await expect(page.getByTestId('evidence-present-layer-0')).toContainText('user messages');
+    await expect(page.getByTestId('evidence-missing-layer-1')).toContainText('git commits');
+    await expect(page.getByTestId('session-state-model')).toContainText('archived');
+    await expect(page.getByTestId('session-state-model')).not.toContainText('live');
   });
 
   test('real session card click opens the published detail route', async ({ page }) => {

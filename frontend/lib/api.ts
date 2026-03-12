@@ -178,6 +178,13 @@ export interface SessionStateModel {
   resume_session?: SessionStateCapability;
 }
 
+export interface SessionEvidenceSparsity {
+  is_sparse: boolean;
+  summary: string;
+  present_layers: string[];
+  missing_layers: string[];
+}
+
 export interface SessionTimeWindow {
   source: string;
   started_at?: string | null;
@@ -211,6 +218,7 @@ export interface SessionArtifactSummary extends LatestSessionSummary {
   git_commits: SessionGitCommit[];
   topic_threads?: string[];
   state_model?: SessionStateModel;
+  evidence_sparsity?: SessionEvidenceSparsity;
   plan_steps: SessionPlanStep[];
   timeline: SessionTimelineEvent[];
   error_message?: string | null;

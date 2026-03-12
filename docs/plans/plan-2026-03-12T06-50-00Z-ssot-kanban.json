@@ -132,7 +132,7 @@
       ],
       "context": {
         "why": "The product expectation requires action blocks to be honest about what is safe and what is actually available.",
-        "current_gap": "The UI only exposes a generic activity badge; there is no operational state model or safety mode in the payload or page layout.",
+        "current_gap": "The first state model shipped, but the published audit on 2026-03-12 showed that idle sessions can still render as live and sparse dossiers do not clearly communicate when evidence is thin.",
         "ssot_refs": [
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Session State Model",
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Action Safety Rules"
@@ -205,7 +205,7 @@
     {
       "id": "T5",
       "title": "Build an evidence matrix that aligns narrative and repository signals",
-      "state": "TODO",
+      "state": "DONE",
       "phase": "next",
       "details": [
         "Create a matrix or aligned multi-column block for user direction, commits, files, and timeline.",
@@ -214,7 +214,7 @@
       ],
       "context": {
         "why": "The roadmap calls for a shift from isolated cards to an evidence-centered dossier with strong signal comparison.",
-        "current_gap": "Current detail page shows commits, files, tools, and timeline as separate blocks with weak narrative linkage.",
+        "current_gap": "Current detail page now has honest state and sparse-evidence cues, but the published audit on 2026-03-12 still shows commits, files, timeline, and user direction as separate blocks with weak narrative linkage.",
         "ssot_refs": [
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Evidence Layers Expectation",
           "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Evidence Matrix"
@@ -244,7 +244,7 @@
     {
       "id": "T6",
       "title": "Connect commit narrative to modified files",
-      "state": "TODO",
+      "state": "DONE",
       "phase": "next",
       "details": [
         "Link commits and file changes instead of rendering them as unrelated lists.",
@@ -253,7 +253,7 @@
       ],
       "context": {
         "why": "The roadmap explicitly says the page should connect commits with files modified and the product doc treats commits as a meaningful evidence layer.",
-        "current_gap": "The backend exposes git_commits and files_modified, but there is no linking or grouped narrative in the UI.",
+        "current_gap": "The backend exposes git_commits and files_modified, but the published audit on 2026-03-12 still shows them as disconnected evidence instead of a grouped narrative with explicit linkage confidence.",
         "ssot_refs": [
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Git Commits As Evidence",
           "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#After This Step"
@@ -371,7 +371,7 @@
       ],
       "context": {
         "why": "The repo quality bar and memory cards require tests and published verification for visible UI, routing, auth, and payload changes.",
-        "current_gap": "Existing tests cover anchors, commits, and timeline, but not the future actions, time-window expansion, evidence matrix, topic threads, or state model.",
+        "current_gap": "Coverage was expanded earlier, but the 2026-03-12 published audit revealed missing assertions for honest state labeling and sparse-evidence cues on real detail pages.",
         "ssot_refs": [
           "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Engineering Expectation",
           ".MEMORY/published-url-playwright.md",

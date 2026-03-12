@@ -159,6 +159,13 @@ TOPIC_SOURCE_WEIGHTS = {
     "tool": 1,
 }
 
+EVIDENCE_LAYER_ORDER = [
+    "user messages",
+    "artifact timeline",
+    "files modified",
+    "git commits",
+]
+
 
 def resolve_timezone(name: str) -> Tuple[ZoneInfo, str]:
     try:
@@ -586,11 +593,14 @@ def build_session_state_model(
     status = str(session.get("status") or "").strip().lower()
     query_enabled = bool(session.get("query_enabled"))
     resume_supported = bool(session.get("resume_supported"))
+    within_operational_window = computed_activity_state in {"live", "active"}
 
     labels: List[str] = []
     if status in {"completed", "error", "failed"}:
         labels.append("archived")
-    elif status in {"active", "running"} or computed_activity_state == "live":
+    elif computed_activity_state == "live":
+        labels.append("live")
+    elif status in {"active", "running"} and within_operational_window:
         labels.append("live")
     else:
         labels.append("archived")
@@ -606,25 +616,93 @@ def build_session_state_model(
     elif query_enabled:
         safety_mode = "ask-only"
         summary = "Сессию можно читать и использовать для безопасных вопросов без продолжения runtime."
+    elif status in {"active", "running"} and computed_activity_state == "idle":
+        safety_mode = "read-only"
+        summary = (
+            "Artifact ещё помечен как active, но recent activity уже idle, "
+            "поэтому detail page честно остаётся read-only до явного restore flow."
+        )
     else:
         safety_mode = "read-only"
         summary = "Сессия доступна только для чтения: resume и ask flow пока не подключены."
+
+    rationale = [
+        f"Observed status: {status or 'unknown'}.",
+        f"Observed activity state: {computed_activity_state}.",
+    ]
+    if status in {"active", "running"} and computed_activity_state == "idle":
+        rationale.append(
+            "The source still says active, but the recent activity window is already cold."
+        )
+
+    rationale.extend([
+        "Resume stays disabled until a harness-specific restore flow exists.",
+        "Ask mode is enabled only when an explicit query layer is wired.",
+    ])
 
     return {
         "labels": labels,
         "safety_mode": safety_mode,
         "summary": summary,
-        "rationale": [
-            f"Observed status: {status or 'unknown'}.",
-            f"Observed activity state: {computed_activity_state}.",
-            "Resume stays disabled until a harness-specific restore flow exists.",
-            "Ask mode is enabled only when an explicit query layer is wired.",
-        ],
+        "rationale": rationale,
         "capabilities": {
             "can_ask": query_enabled,
             "can_resume": resume_supported,
             "can_restore": resume_supported,
         },
+    }
+
+
+def build_evidence_sparsity(
+    user_messages: Iterable[Any],
+    timeline: Iterable[Dict[str, Any]],
+    files_modified: Iterable[Any],
+    git_commits: Iterable[Dict[str, Any]],
+) -> Dict[str, Any]:
+    timeline_items = list(timeline)
+    git_commit_items = list(git_commits)
+    has_message_layer = bool(_dedupe_consecutive_messages(user_messages))
+    has_file_layer = any(isinstance(path, str) and path.strip() for path in files_modified)
+
+    present_layers: List[str] = []
+    if has_message_layer:
+        present_layers.append("user messages")
+    if timeline_items:
+        present_layers.append("artifact timeline")
+    if has_file_layer:
+        present_layers.append("files modified")
+    if git_commit_items:
+        present_layers.append("git commits")
+
+    missing_layers = [
+        label
+        for label in EVIDENCE_LAYER_ORDER
+        if label not in present_layers
+    ]
+    has_repo_signal = any(label in {"files modified", "git commits"} for label in present_layers)
+    is_sparse = len(present_layers) <= 1 or (len(present_layers) == 2 and not has_repo_signal)
+
+    if not present_layers:
+        summary = (
+            "Evidence stack пока почти пустой: виден только source artifact, "
+            "а сообщения, timeline и repo signals для этого окна ещё не проявились."
+        )
+    elif is_sparse:
+        summary = (
+            f"Evidence stack пока тонкий: {', '.join(present_layers)} доступны, "
+            f"но {', '.join(missing_layers)} отсутствуют в этом окне."
+        )
+    else:
+        summary = (
+            f"Evidence stack уже многослойный: {', '.join(present_layers)} "
+            "подтверждают историю этой сессии."
+        )
+
+    return {
+        "is_sparse": is_sparse,
+        "summary": summary,
+        "present_layers": present_layers,
+        "missing_layers": missing_layers,
     }
 
 
@@ -778,6 +856,12 @@ def build_session_detail_payload(
         tool_calls=session.get("tool_calls") or [],
     )
     state_model = build_session_state_model(session, computed_activity_state)
+    evidence_sparsity = build_evidence_sparsity(
+        user_messages=user_messages,
+        timeline=timeline,
+        files_modified=session.get("files_modified") or [],
+        git_commits=git_context.get("commits") or [],
+    )
     time_window = {
         "source": "session_artifact",
         "started_at": started_at.isoformat() if started_at else None,
@@ -825,6 +909,7 @@ def build_session_detail_payload(
         "cwd": session.get("cwd") or "",
         "status": session.get("status"),
         "state_model": state_model,
+        "evidence_sparsity": evidence_sparsity,
         "user_intent": session.get("user_intent") or "",
         "tool_calls": session.get("tool_calls") or [],
         "token_usage": session.get("token_usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
