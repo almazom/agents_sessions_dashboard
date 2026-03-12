@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import AuthPanel from '@/components/AuthPanel';
 import RichSessionCard from '@/components/RichSessionCard';
-import { api, ApiError, SessionArtifactResponse } from '@/lib/api';
+import { api, ApiError, SessionArtifactResponse, SessionStateModel } from '@/lib/api';
 
 type AuthState = {
   authenticated: boolean;
@@ -93,6 +93,90 @@ function formatTimelineTimestamp(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+const evidencePriorityItems = [
+  {
+    key: 'source-artifact',
+    badge: 'highest trust',
+    title: 'Source artifact',
+    description: 'JSON или JSONL-файл остаётся главным источником правды по identity и time window.',
+  },
+  {
+    key: 'artifact-timeline',
+    badge: 'artifact timeline',
+    title: 'Timeline from artifact',
+    description: 'Хронология событий берётся из самой сессии и держит порядок шагов внутри окна.',
+  },
+  {
+    key: 'repository-signals',
+    badge: 'repo signal',
+    title: 'Repository signals',
+    description: 'Коммиты и файлы читаются только внутри окна этой сессии, а не как глобальная правда.',
+  },
+  {
+    key: 'derived-layers',
+    badge: 'derived layer',
+    title: 'Intent and topics',
+    description: 'Intent evolution и topic threads помогают понять смысл, но не переопределяют artifact.',
+  },
+] as const;
+
+const stateLabelText: Record<string, string> = {
+  archived: 'archived',
+  restorable: 'restorable',
+  live: 'live',
+  queryable: 'queryable',
+};
+
+const stateLabelClasses: Record<string, string> = {
+  archived: 'border-slate-200 bg-slate-100 text-slate-700',
+  restorable: 'border-sky-200 bg-sky-50 text-sky-700',
+  live: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  queryable: 'border-amber-200 bg-amber-50 text-amber-700',
+};
+
+const safetyModeText: Record<string, string> = {
+  'read-only': 'read-only',
+  'ask-only': 'ask-only',
+  'resume-allowed': 'resume-allowed',
+};
+
+const safetyModeClasses: Record<string, string> = {
+  'read-only': 'border-slate-200 bg-slate-100 text-slate-700',
+  'ask-only': 'border-blue-200 bg-blue-50 text-blue-700',
+  'resume-allowed': 'border-emerald-200 bg-emerald-50 text-emerald-700',
+};
+
+function formatDetailedTimestamp(value: string): string {
+  if (!value) {
+    return 'время не указано';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    year: 'numeric',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatSessionWindowValue(localValue?: string | null, isoValue?: string | null, fallback = '—'): string {
+  if (localValue) {
+    return localValue;
+  }
+
+  if (isoValue) {
+    return formatDetailedTimestamp(isoValue);
+  }
+
+  return fallback;
 }
 
 interface Props {
@@ -330,6 +414,54 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
   const visibleUserTurns = session?.user_messages?.length || session?.user_message_count || 0;
   const gitCommits = session?.git_commits || [];
   const gitRepositoryRoot = session?.git_repository_root || null;
+  const topicThreads = session?.topic_threads || [];
+  const timeWindow = session?.time_window;
+  const defaultStateModel: SessionStateModel = {
+    labels: session?.activity_state === 'live' ? ['live'] : ['archived'],
+    safety_mode: 'read-only',
+    summary: 'Сейчас detail page работает как безопасное досье: только чтение и честные placeholders.',
+    rationale: [
+      'Ask и resume ещё не подключены к реальному runtime flow.',
+      'UI не обещает действий, которые могут скрыто менять source artifact.',
+    ],
+    capabilities: {
+      can_ask: false,
+      can_resume: false,
+      can_restore: false,
+    },
+  };
+  const stateModel = session?.state_model ?? defaultStateModel;
+  const safetyMode = stateModel.safety_mode || 'read-only';
+  const stateLabels = stateModel.labels?.length > 0 ? stateModel.labels : defaultStateModel.labels;
+  const capabilities = stateModel.capabilities ?? defaultStateModel.capabilities!;
+  const askCapability = stateModel.ask_session ?? {
+    available: capabilities.can_ask,
+    label: capabilities.can_ask ? 'Query layer доступен' : 'Пока не подключено',
+    detail: capabilities.can_ask
+      ? 'Безопасный ask-only режим уже можно показывать без обещания resume.'
+      : 'Будущий ask-only слой останется недеструктивным и будет работать поверх artifact.',
+  };
+  const resumeCapability = stateModel.resume_session ?? {
+    available: capabilities.can_resume,
+    label: capabilities.can_resume ? 'Resume поддержан' : 'Пока не разрешено',
+    detail: capabilities.can_resume
+      ? 'Resume-allowed включается только когда backend явно разрешает продолжение.'
+      : 'Resume появится только после явных harness-specific safety checks.',
+  };
+  const timeWindowStartValue = formatSessionWindowValue(
+    timeWindow?.started_at_local || session?.started_at_local,
+    timeWindow?.started_at || session?.started_at,
+  );
+  const timeWindowEndValue = formatSessionWindowValue(
+    timeWindow?.ended_at_local || session?.ended_at_local,
+    timeWindow?.ended_at || session?.ended_at,
+  );
+  const timeWindowDurationValue = timeWindow?.duration_human || session?.duration_human || '—';
+  const timeWindowScope = [
+    `${timelineEvents.length} timeline events`,
+    `${(session?.files_modified || []).length} file signals`,
+    `${gitCommits.length} commit signals`,
+  ].join(' · ');
 
   return (
     <main data-testid="session-detail-page" className="min-h-screen p-6">
@@ -389,7 +521,138 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
               { label: 'Рабочая директория', value: session.cwd || '—', emoji: '📁' },
             ]}
             showMessageExtremes={false}
+            intentBadgeText="derived layer"
           />
+
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+            <article
+              data-testid="time-window-block"
+              className="rounded-[28px] border border-[#d7e0ea] bg-[linear-gradient(135deg,#f4fbff_0%,#ffffff_48%,#fffef6_100%)] p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    time window
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                    Временное окно сессии
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-nexus-600">
+                    Коммиты, файлы и timeline ниже читаются только внутри этого окна, а не как отдельная глобальная история.
+                  </p>
+                </div>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  source artifact
+                </span>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div
+                  data-testid="time-window-start"
+                  className="rounded-[22px] border border-nexus-200 bg-white/90 p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Начало
+                  </div>
+                  <div className="mt-2 text-base font-semibold text-nexus-900">
+                    {timeWindowStartValue}
+                  </div>
+                  <div className="mt-1 text-xs text-nexus-500">
+                    source timestamp
+                  </div>
+                </div>
+
+                <div
+                  data-testid="time-window-end"
+                  className="rounded-[22px] border border-nexus-200 bg-white/90 p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Конец
+                  </div>
+                  <div className="mt-2 text-base font-semibold text-nexus-900">
+                    {timeWindowEndValue}
+                  </div>
+                  <div className="mt-1 text-xs text-nexus-500">
+                    explicit window end
+                  </div>
+                </div>
+
+                <div
+                  data-testid="time-window-duration"
+                  className="rounded-[22px] border border-nexus-200 bg-white/90 p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Длительность
+                  </div>
+                  <div className="mt-2 text-base font-semibold text-nexus-900">
+                    {timeWindowDurationValue}
+                  </div>
+                  <div className="mt-1 text-xs text-nexus-500">
+                    окно досье, а не только latest snapshot
+                  </div>
+                </div>
+
+                <div
+                  data-testid="time-window-scope"
+                  className="rounded-[22px] border border-nexus-200 bg-white/90 p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Что привязано к окну
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-nexus-800">
+                    Коммиты, files modified и timeline ниже читаются только внутри этого окна сессии.
+                  </div>
+                  <div className="mt-1 text-xs text-nexus-500">
+                    {timeWindowScope}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              data-testid="evidence-priority"
+              className="rounded-[28px] border border-[#d7e0ea] bg-white p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    evidence priority
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                    Иерархия доверия
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-nexus-600">
+                    Если intent layer и git narrative расходятся, page сохраняет оба сигнала и не прячет расхождение.
+                  </p>
+                </div>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  trust map
+                </span>
+              </div>
+
+              <div className="grid gap-3">
+                {evidencePriorityItems.map((item, index) => (
+                  <div
+                    key={item.key}
+                    data-testid={`evidence-priority-item-${index}`}
+                    className="rounded-[22px] border border-nexus-200 bg-[#fbfdff] p-4"
+                  >
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-nexus-900">
+                        {index + 1}. {item.title}
+                      </div>
+                      <span className="rounded-full border border-nexus-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-nexus-600">
+                        {item.badge}
+                      </span>
+                    </div>
+                    <div className="text-sm leading-6 text-nexus-700">
+                      {item.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
 
           <section
             data-testid="message-anchors"
@@ -397,8 +660,13 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
           >
             <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
-                  message anchors
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    message anchors
+                  </div>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    source artifact
+                  </span>
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
                   Опорные сообщения сессии
@@ -535,8 +803,13 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
           >
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
-                  git commits during session
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    git commits during session
+                  </div>
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                    repo signal
+                  </span>
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
                   Коммиты в окно этой сессии
@@ -605,8 +878,13 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
           >
             <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
-                  session timeline
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    session timeline
+                  </div>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    artifact timeline
+                  </span>
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
                   Хронология ключевых событий
@@ -662,6 +940,148 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                 Таймлайн ещё не собран для этой сессии.
               </div>
             )}
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <article
+              data-testid="topic-threads"
+              className="rounded-[28px] border border-[#d7e0ea] bg-[linear-gradient(135deg,#fff8e9_0%,#ffffff_48%,#f8fbff_100%)] p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    topic threads
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                    Тематические потоки
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-nexus-600">
+                    Это отдельный semantic layer: не куда пользователь вёл сессию, а о каких предметных блоках реально шёл разговор.
+                  </p>
+                </div>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  derived layer
+                </span>
+              </div>
+
+              {topicThreads.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {topicThreads.map((topic, index) => (
+                    <span
+                      key={`${topic}-${index}`}
+                      data-testid={`topic-thread-${index}`}
+                      className="rounded-full border border-[#d7e0ea] bg-white px-3 py-1.5 text-sm text-nexus-700"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[22px] border border-dashed border-nexus-200 bg-white/90 px-4 py-6 text-sm text-nexus-500">
+                  Topic threads ещё не извлечены. Здесь должен жить отдельный слой тем, а не дубли intent bullets.
+                </div>
+              )}
+            </article>
+
+            <article
+              data-testid="future-actions"
+              className="rounded-[28px] border border-[#d7e0ea] bg-white p-5 shadow-sm"
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
+                    future actions
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
+                    Будущие действия
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-nexus-600">
+                    Это безопасные placeholders. Они показывают roadmap detail page, но не запускают скрытые runtime-действия.
+                  </p>
+                </div>
+                <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${safetyModeClasses[safetyMode] || safetyModeClasses['read-only']}`}>
+                  {safetyModeText[safetyMode] || safetyMode}
+                </span>
+              </div>
+
+              <div
+                data-testid="session-state-model"
+                className="mb-4 rounded-[22px] border border-nexus-200 bg-[#fbfdff] p-4"
+              >
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {stateLabels.map((label, index) => (
+                    <span
+                      key={`${label}-${index}`}
+                      data-testid={`state-label-${index}`}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${stateLabelClasses[label] || stateLabelClasses.archived}`}
+                    >
+                      {stateLabelText[label] || label}
+                    </span>
+                  ))}
+                  <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${safetyModeClasses[safetyMode] || safetyModeClasses['read-only']}`}>
+                    {safetyModeText[safetyMode] || safetyMode}
+                  </span>
+                </div>
+                <div className="text-sm leading-6 text-nexus-800">
+                  {stateModel.summary}
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {stateModel.rationale.map((reason, index) => (
+                    <div
+                      key={`${index + 1}-${reason}`}
+                      data-testid={`state-rationale-${index}`}
+                      className="rounded-2xl border border-nexus-200 bg-white px-3 py-2 text-sm text-nexus-700"
+                    >
+                      {reason}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <article
+                  data-testid="future-action-ask"
+                  className="rounded-[22px] border border-[#d7e0ea] bg-[linear-gradient(135deg,#fffaf0_0%,#ffffff_100%)] p-4"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold text-nexus-900">
+                      Ask This Session
+                    </h3>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                      placeholder
+                    </span>
+                  </div>
+                  <div className="text-sm leading-6 text-nexus-700">
+                    Вопросы к artifact будут идти поверх JSON и timeline без изменения исходного файла.
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-nexus-200 bg-white px-3 py-3 text-sm text-nexus-800">
+                    <div className="font-semibold">{askCapability.label}</div>
+                    <div className="mt-1 text-nexus-600">{askCapability.detail}</div>
+                  </div>
+                </article>
+
+                <article
+                  data-testid="future-action-resume"
+                  className="rounded-[22px] border border-[#d7e0ea] bg-[linear-gradient(135deg,#f5f9ff_0%,#ffffff_100%)] p-4"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold text-nexus-900">
+                      Continue / Resume Session
+                    </h3>
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                      safety gated
+                    </span>
+                  </div>
+                  <div className="text-sm leading-6 text-nexus-700">
+                    Продолжение появится только когда harness-specific flow научится явно проверять безопасность и capability.
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-nexus-200 bg-white px-3 py-3 text-sm text-nexus-800">
+                    <div className="font-semibold">{resumeCapability.label}</div>
+                    <div className="mt-1 text-nexus-600">{resumeCapability.detail}</div>
+                  </div>
+                </article>
+              </div>
+            </article>
           </section>
         </>
       ) : (

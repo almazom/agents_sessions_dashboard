@@ -153,6 +153,42 @@ export interface SessionGitCommit {
   committed_at_local?: string;
 }
 
+export type SessionStateLabel = 'archived' | 'restorable' | 'live' | 'queryable';
+export type SessionSafetyMode = 'read-only' | 'ask-only' | 'resume-allowed';
+
+export interface SessionStateCapability {
+  available: boolean;
+  label: string;
+  detail: string;
+}
+
+export interface SessionStateCapabilities {
+  can_ask: boolean;
+  can_resume: boolean;
+  can_restore: boolean;
+}
+
+export interface SessionStateModel {
+  labels: SessionStateLabel[];
+  safety_mode: SessionSafetyMode;
+  summary: string;
+  rationale: string[];
+  capabilities?: SessionStateCapabilities;
+  ask_session?: SessionStateCapability;
+  resume_session?: SessionStateCapability;
+}
+
+export interface SessionTimeWindow {
+  source: string;
+  started_at?: string | null;
+  started_at_local?: string | null;
+  ended_at?: string | null;
+  ended_at_local?: string | null;
+  duration_seconds?: number | null;
+  duration_human?: string | null;
+  scope_summary: string;
+}
+
 export interface SessionArtifactSummary extends LatestSessionSummary {
   agent_name?: string;
   cwd: string;
@@ -167,9 +203,14 @@ export interface SessionArtifactSummary extends LatestSessionSummary {
     total_tokens: number;
   };
   files_modified: string[];
+  ended_at?: string | null;
+  ended_at_local?: string | null;
+  time_window?: SessionTimeWindow;
   git_branch?: string | null;
   git_repository_root?: string | null;
   git_commits: SessionGitCommit[];
+  topic_threads?: string[];
+  state_model?: SessionStateModel;
   plan_steps: SessionPlanStep[];
   timeline: SessionTimelineEvent[];
   error_message?: string | null;

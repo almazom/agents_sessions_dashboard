@@ -24,6 +24,7 @@ interface Props {
   actionLabel?: string;
   detailRows?: DetailRow[];
   showMessageExtremes?: boolean;
+  intentBadgeText?: string;
 }
 
 const providerLabels: Record<string, string> = {
@@ -87,6 +88,7 @@ export default function RichSessionCard({
   actionLabel = 'Открыть сессию',
   detailRows,
   showMessageExtremes = true,
+  intentBadgeText,
 }: Props) {
   const [showAllIntentSteps, setShowAllIntentSteps] = useState(false);
   const providerLabel = providerLabels[session.provider] || session.provider;
@@ -193,8 +195,15 @@ export default function RichSessionCard({
             data-testid="latest-intent-evolution"
             className="rounded-[24px] border border-[#d7e0ea] bg-white p-4"
           >
-            <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-nexus-500">
-              🧭 Вектор намерений
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-nexus-500">
+                🧭 Вектор намерений
+              </div>
+              {intentBadgeText && (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  {intentBadgeText}
+                </span>
+              )}
             </div>
             <div className="grid gap-2">
               {visibleIntentSteps.map((step, index) => {

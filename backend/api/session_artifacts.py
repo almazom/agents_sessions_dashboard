@@ -21,6 +21,143 @@ DEFAULT_LIVE_WITHIN_MINUTES = 10
 DEFAULT_ACTIVE_WITHIN_MINUTES = 60
 DETAIL_TIMELINE_LIMIT = 14
 DETAIL_GIT_COMMIT_LIMIT = 12
+DETAIL_TOPIC_THREAD_LIMIT = 5
+
+TOPIC_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "apply",
+    "are",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "on",
+    "or",
+    "the",
+    "this",
+    "to",
+    "with",
+    "add",
+    "check",
+    "collect",
+    "continue",
+    "create",
+    "debug",
+    "do",
+    "edit",
+    "file",
+    "files",
+    "fix",
+    "improve",
+    "make",
+    "open",
+    "patch",
+    "pnpm",
+    "resume",
+    "run",
+    "ship",
+    "show",
+    "update",
+    "verify",
+    "bye",
+    "agent",
+    "artifact",
+    "artifacts",
+    "context",
+    "command",
+    "commands",
+    "exec",
+    "hello",
+    "first",
+    "last",
+    "latest",
+    "message",
+    "messages",
+    "now",
+    "step",
+    "steps",
+    "tool",
+    "tools",
+    "block",
+    "user",
+    "users",
+    "в",
+    "во",
+    "для",
+    "до",
+    "и",
+    "из",
+    "или",
+    "как",
+    "на",
+    "не",
+    "но",
+    "о",
+    "об",
+    "по",
+    "под",
+    "при",
+    "с",
+    "со",
+    "что",
+    "это",
+    "добавить",
+    "запустить",
+    "открыть",
+    "первое",
+    "первый",
+    "показать",
+    "последнее",
+    "последний",
+    "проверить",
+    "продолжить",
+    "сделать",
+    "сессию",
+    "сессии",
+    "собрать",
+    "финальный",
+}
+
+TOPIC_GENERIC_TOKENS = {
+    "api",
+    "app",
+    "backend",
+    "card",
+    "cards",
+    "client",
+    "components",
+    "frontend",
+    "json",
+    "jsonl",
+    "jsx",
+    "main",
+    "md",
+    "py",
+    "spec",
+    "test",
+    "tests",
+    "ts",
+    "tsx",
+}
+
+TOPIC_SKIP_UNIGRAMS = {
+    "detail",
+    "page",
+    "session",
+}
+
+TOPIC_SOURCE_WEIGHTS = {
+    "commit": 4,
+    "file": 3,
+    "timeline": 2,
+    "message": 1,
+    "tool": 1,
+}
 
 
 def resolve_timezone(name: str) -> Tuple[ZoneInfo, str]:
@@ -335,6 +472,162 @@ def build_detail_timeline(timeline: Iterable[Any], max_events: int = DETAIL_TIME
     return [first, *_select_evenly_spaced(middle, middle_limit), last]
 
 
+def _format_local_datetime(value: Optional[datetime], tzinfo: ZoneInfo) -> Optional[str]:
+    if not value:
+        return None
+    return value.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S %Z").strip()
+
+
+def _camel_case_to_words(value: str) -> str:
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", value)
+
+
+def _tokenize_topic_text(value: str) -> List[str]:
+    normalized = _camel_case_to_words(value).replace("/", " ").replace("_", " ").replace("-", " ")
+    tokens = re.findall(r"[A-Za-zА-Яа-я0-9]+", normalized.lower())
+    return [
+        token
+        for token in tokens
+        if len(token) >= 3
+        and not token.isdigit()
+        and token not in TOPIC_STOPWORDS
+    ]
+
+
+def build_topic_threads(
+    user_messages: Iterable[Any],
+    timeline: Iterable[Dict[str, Any]],
+    files_modified: Iterable[Any],
+    git_commits: Iterable[Dict[str, Any]],
+    tool_calls: Iterable[Any],
+    limit: int = DETAIL_TOPIC_THREAD_LIMIT,
+) -> List[str]:
+    scored_candidates: Dict[str, Dict[str, Any]] = {}
+
+    def add_candidate(label: str, signal: str, bonus: int = 0) -> None:
+        normalized = " ".join(label.split()).strip()
+        if not normalized:
+            return
+
+        payload = scored_candidates.setdefault(
+            normalized,
+            {"label": normalized, "score": 0, "signals": set()},
+        )
+        payload["score"] += TOPIC_SOURCE_WEIGHTS.get(signal, 1) + bonus
+        payload["signals"].add(signal)
+
+    def ingest_text(value: str, signal: str) -> None:
+        tokens = _tokenize_topic_text(value)
+        if not tokens:
+            return
+
+        for token in tokens:
+            if token in TOPIC_GENERIC_TOKENS or token in TOPIC_SKIP_UNIGRAMS:
+                continue
+            add_candidate(token, signal)
+
+        for first, second in zip(tokens, tokens[1:]):
+            if first in TOPIC_GENERIC_TOKENS or second in TOPIC_GENERIC_TOKENS:
+                continue
+            add_candidate(f"{first} {second}", signal, bonus=1)
+
+    for message in user_messages:
+        if isinstance(message, str):
+            ingest_text(message, "message")
+
+    for event in timeline:
+        if isinstance(event, dict):
+            ingest_text(str(event.get("description") or ""), "timeline")
+
+    for file_path in files_modified:
+        if isinstance(file_path, str):
+            ingest_text(file_path, "file")
+
+    for commit in git_commits:
+        if isinstance(commit, dict):
+            ingest_text(str(commit.get("title") or ""), "commit")
+
+    for tool in tool_calls:
+        if isinstance(tool, str):
+            ingest_text(tool, "tool")
+
+    ranked = sorted(
+        scored_candidates.values(),
+        key=lambda item: (
+            len(item["label"].split()) > 1,
+            len(item["signals"]),
+            item["score"],
+            len(item["label"]),
+        ),
+        reverse=True,
+    )
+
+    selected: List[str] = []
+    seen_tokens: set[str] = set()
+    for item in ranked:
+        label = item["label"]
+        label_tokens = set(label.split())
+        if label_tokens and label_tokens <= seen_tokens:
+            continue
+
+        selected.append(label)
+        seen_tokens.update(label_tokens)
+
+        if len(selected) >= limit:
+            break
+
+    return selected
+
+
+def build_session_state_model(
+    session: Dict[str, Any],
+    computed_activity_state: str,
+) -> Dict[str, Any]:
+    status = str(session.get("status") or "").strip().lower()
+    query_enabled = bool(session.get("query_enabled"))
+    resume_supported = bool(session.get("resume_supported"))
+
+    labels: List[str] = []
+    if status in {"completed", "error", "failed"}:
+        labels.append("archived")
+    elif status in {"active", "running"} or computed_activity_state == "live":
+        labels.append("live")
+    else:
+        labels.append("archived")
+
+    if resume_supported:
+        labels.append("restorable")
+    if query_enabled:
+        labels.append("queryable")
+
+    if resume_supported:
+        safety_mode = "resume-allowed"
+        summary = "Сессию можно безопасно продолжить через отдельный harness flow."
+    elif query_enabled:
+        safety_mode = "ask-only"
+        summary = "Сессию можно читать и использовать для безопасных вопросов без продолжения runtime."
+    else:
+        safety_mode = "read-only"
+        summary = "Сессия доступна только для чтения: resume и ask flow пока не подключены."
+
+    return {
+        "labels": labels,
+        "safety_mode": safety_mode,
+        "summary": summary,
+        "rationale": [
+            f"Observed status: {status or 'unknown'}.",
+            f"Observed activity state: {computed_activity_state}.",
+            "Resume stays disabled until a harness-specific restore flow exists.",
+            "Ask mode is enabled only when an explicit query layer is wired.",
+        ],
+        "capabilities": {
+            "can_ask": query_enabled,
+            "can_resume": resume_supported,
+            "can_restore": resume_supported,
+        },
+    }
+
+
 def _empty_git_context(repository_root: Optional[str] = None) -> Dict[str, Any]:
     return {
         "repository_root": repository_root,
@@ -463,6 +756,7 @@ def build_session_detail_payload(
     modified_at = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
     modified_local = modified_at.astimezone(tzinfo)
     age_seconds = max(0.0, (datetime.now(timezone.utc) - modified_at).total_seconds())
+    computed_activity_state = activity_state(age_seconds, live_within_minutes, active_within_minutes)
 
     started_at = parse_iso_datetime(session.get("timestamp_start"))
     ended_at = parse_iso_datetime(session.get("timestamp_end")) or modified_at
@@ -475,6 +769,25 @@ def build_session_detail_payload(
     duration_seconds: Optional[int] = None
     if started_at:
         duration_seconds = max(0, int((ended_at - started_at).total_seconds()))
+
+    topic_threads = build_topic_threads(
+        user_messages=user_messages,
+        timeline=timeline,
+        files_modified=session.get("files_modified") or [],
+        git_commits=git_context.get("commits") or [],
+        tool_calls=session.get("tool_calls") or [],
+    )
+    state_model = build_session_state_model(session, computed_activity_state)
+    time_window = {
+        "source": "session_artifact",
+        "started_at": started_at.isoformat() if started_at else None,
+        "started_at_local": _format_local_datetime(started_at, tzinfo),
+        "ended_at": ended_at.isoformat(),
+        "ended_at_local": _format_local_datetime(ended_at, tzinfo),
+        "duration_seconds": duration_seconds,
+        "duration_human": duration_human(duration_seconds) if duration_seconds is not None else None,
+        "scope_summary": "Commits, files, and timeline evidence are interpreted inside this session window.",
+    }
 
     payload = {
         "provider": session.get("agent_type"),
@@ -489,14 +802,17 @@ def build_session_detail_payload(
         "modified_human": modified_human(modified_local, tzinfo),
         "age_seconds": age_seconds,
         "age_human": age_human(age_seconds),
-        "activity_state": activity_state(age_seconds, live_within_minutes, active_within_minutes),
+        "activity_state": computed_activity_state,
         "record_count": file_stats["record_count"],
         "parse_errors": file_stats["parse_errors"],
         "user_message_count": session.get("user_message_count", 0),
         "started_at": started_at.isoformat() if started_at else None,
-        "started_at_local": started_at.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S %Z").strip() if started_at else None,
+        "started_at_local": _format_local_datetime(started_at, tzinfo),
+        "ended_at": ended_at.isoformat(),
+        "ended_at_local": _format_local_datetime(ended_at, tzinfo),
         "duration_seconds": duration_seconds,
         "duration_human": duration_human(duration_seconds) if duration_seconds is not None else None,
+        "time_window": time_window,
         "first_user_message": session.get("first_user_message") or "",
         "last_user_message": session.get("last_user_message") or "",
         "user_messages": _dedupe_consecutive_messages(user_messages),
@@ -504,9 +820,11 @@ def build_session_detail_payload(
         "intent_evolution": session.get("intent_evolution") or [],
         "intent_summary_source": "local_fallback",
         "intent_summary_provider": None,
+        "topic_threads": topic_threads,
         "route": route,
         "cwd": session.get("cwd") or "",
         "status": session.get("status"),
+        "state_model": state_model,
         "user_intent": session.get("user_intent") or "",
         "tool_calls": session.get("tool_calls") or [],
         "token_usage": session.get("token_usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},

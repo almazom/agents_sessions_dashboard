@@ -92,12 +92,50 @@ type SessionArtifactPayload = {
     first_user_message: string;
     last_user_message: string;
     user_messages?: string[];
+    started_at?: string | null;
+    started_at_local?: string | null;
+    ended_at?: string | null;
+    ended_at_local?: string | null;
+    duration_seconds?: number | null;
+    duration_human?: string | null;
+    time_window?: {
+      source: string;
+      started_at?: string | null;
+      started_at_local?: string | null;
+      ended_at?: string | null;
+      ended_at_local?: string | null;
+      duration_seconds?: number | null;
+      duration_human?: string | null;
+      scope_summary: string;
+    };
     message_anchors?: {
       first: string;
       middle: string[];
       last: string;
     };
     intent_evolution: string[];
+    topic_threads?: string[];
+    state_model?: {
+      labels: string[];
+      safety_mode: 'read-only' | 'ask-only' | 'resume-allowed';
+      summary: string;
+      rationale: string[];
+      capabilities?: {
+        can_ask: boolean;
+        can_resume: boolean;
+        can_restore: boolean;
+      };
+      ask_session?: {
+        available: boolean;
+        label: string;
+        detail: string;
+      };
+      resume_session?: {
+        available: boolean;
+        label: string;
+        detail: string;
+      };
+    };
     route: {
       harness: string;
       id: string;
@@ -815,6 +853,22 @@ test.describe('Published URL end-to-end', () => {
           cwd: '/home/pets/zoo/agents_sessions_dashboard',
           first_user_message: 'первое сообщение',
           last_user_message: 'последнее сообщение',
+          started_at: '2026-03-12T08:00:00+00:00',
+          started_at_local: '2026-03-12 11:00:00 MSK',
+          ended_at: '2026-03-12T08:04:00+00:00',
+          ended_at_local: '2026-03-12 11:04:00 MSK',
+          duration_seconds: 240,
+          duration_human: '4 мин',
+          time_window: {
+            source: 'session_artifact',
+            started_at: '2026-03-12T08:00:00+00:00',
+            started_at_local: '2026-03-12 11:00:00 MSK',
+            ended_at: '2026-03-12T08:04:00+00:00',
+            ended_at_local: '2026-03-12 11:04:00 MSK',
+            duration_seconds: 240,
+            duration_human: '4 мин',
+            scope_summary: 'Commits, files, and timeline evidence are interpreted inside this session window.',
+          },
           user_messages: [
             'первое сообщение',
             'собрать контекст',
@@ -834,6 +888,36 @@ test.describe('Published URL end-to-end', () => {
             last: 'последнее сообщение',
           },
           intent_evolution: ['первый шаг', 'второй шаг'],
+          topic_threads: [
+            'session detail',
+            'message anchors',
+            'timeline',
+            'git commits',
+          ],
+          state_model: {
+            labels: ['archived'],
+            safety_mode: 'read-only',
+            summary: 'Сессия доступна как историческое досье. Actions пока остаются безопасными placeholders.',
+            rationale: [
+              'Ask flow ещё не подключён к backend query layer.',
+              'Resume flow не должен обещаться без harness-specific safety checks.',
+            ],
+            capabilities: {
+              can_ask: false,
+              can_resume: false,
+              can_restore: false,
+            },
+            ask_session: {
+              available: false,
+              label: 'Пока не подключено',
+              detail: 'Будущий ask-only flow останется недеструктивным.',
+            },
+            resume_session: {
+              available: false,
+              label: 'Пока не разрешено',
+              detail: 'Resume появится только после явных safety checks.',
+            },
+          },
           route: {
             harness: 'codex',
             id: 'rollout-second.jsonl',
@@ -909,6 +993,11 @@ test.describe('Published URL end-to-end', () => {
     await expect(page).toHaveURL(/\/sessions\/codex\/rollout-second\.jsonl$/);
     await expect(page.getByTestId('session-detail-page')).toBeVisible();
     await expect(page.getByTestId('session-detail-card')).toBeVisible();
+    await expect(page.getByTestId('time-window-block')).toBeVisible();
+    await expect(page.getByTestId('time-window-start')).toContainText('2026-03-12 11:00:00 MSK');
+    await expect(page.getByTestId('time-window-end')).toContainText('2026-03-12 11:04:00 MSK');
+    await expect(page.getByTestId('time-window-duration')).toContainText('4 мин');
+    await expect(page.getByTestId('evidence-priority')).toBeVisible();
     await expect(page.getByTestId('message-anchors')).toBeVisible();
     await expect(page.getByTestId('message-anchor-first')).toContainText('первое сообщение');
     await expect(page.getByTestId('message-anchor-middle-0')).toContainText('собрать контекст');
@@ -921,6 +1010,12 @@ test.describe('Published URL end-to-end', () => {
     await expect(page.getByTestId('session-timeline')).toBeVisible();
     await expect(page.getByTestId('session-timeline-item-0')).toContainText('первое сообщение');
     await expect(page.getByTestId('session-timeline-item-3')).toContainText('pnpm test');
+    await expect(page.getByTestId('topic-threads')).toBeVisible();
+    await expect(page.getByTestId('topic-thread-0')).toContainText('session detail');
+    await expect(page.getByTestId('future-actions')).toBeVisible();
+    await expect(page.getByTestId('session-state-model')).toContainText('read-only');
+    await expect(page.getByTestId('future-action-ask')).toContainText('Ask This Session');
+    await expect(page.getByTestId('future-action-resume')).toContainText('Continue / Resume Session');
   });
 
   test('real session card click opens the published detail route', async ({ page }) => {
@@ -938,9 +1033,11 @@ test.describe('Published URL end-to-end', () => {
     await expect(page).toHaveURL(new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
     await expect(page.getByTestId('session-detail-page')).toBeVisible();
     await expect(page.getByTestId('session-detail-card')).toBeVisible();
+    await expect(page.getByTestId('time-window-block')).toBeVisible();
     await expect(page.getByTestId('message-anchors')).toBeVisible();
     await expect(page.getByTestId('git-commits-block')).toBeVisible();
     await expect(page.getByTestId('session-timeline')).toBeVisible();
+    await expect(page.getByTestId('future-actions')).toBeVisible();
   });
 
   test('shows metrics that match the backend payload', async ({ page, request }) => {

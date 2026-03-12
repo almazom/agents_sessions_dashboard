@@ -1,0 +1,408 @@
+{
+  "version": "1.0.0",
+  "created_at": "2026-03-12T06:50:00Z",
+  "plan_type": "ssot-kanban",
+  "objective": "Close the documented gaps between the current session detail implementation and the session dossier expectations defined in product and roadmap docs.",
+  "states": [
+    "TODO",
+    "DOING",
+    "DONE"
+  ],
+  "ssot_sources": [
+    {
+      "path": "docs/product/HIGH_LEVEL_EXPECTATIONS.md",
+      "role": "product expectation for landing and session detail behavior"
+    },
+    {
+      "path": "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md",
+      "role": "next-step roadmap for evolving detail page into an evidence-centered dossier"
+    },
+    {
+      "path": "frontend/components/SessionDetailClient.tsx",
+      "role": "current detail page implementation"
+    },
+    {
+      "path": "backend/api/session_artifacts.py",
+      "role": "current detail payload builder"
+    },
+    {
+      "path": "frontend/lib/api.ts",
+      "role": "frontend session artifact payload shape"
+    }
+  ],
+  "states_explainer": {
+    "TODO": "Gap is acknowledged but implementation has not started.",
+    "DOING": "Work is active across code, payload, or tests.",
+    "DONE": "Visible behavior, payload shape, and tests are aligned."
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add Future Actions section with safe placeholders",
+      "state": "DONE",
+      "phase": "next",
+      "details": [
+        "Add a dedicated Future Actions block to the session detail page.",
+        "Start with non-destructive placeholders only: Ask This Session and Continue / Resume Session.",
+        "Make the UI clearly present these as roadmap placeholders, not active workflows."
+      ],
+      "context": {
+        "why": "The roadmap names this as the immediate implementation step and the product expectation requires a future-actions layer on the dossier page.",
+        "current_gap": "The current detail page ends with evidence blocks and timeline; there is no action surface yet.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Session Detail Expectation",
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#UI Placeholder Expectation",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Practical Next Implementation Step"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [],
+        "unlocks": [
+          "T3"
+        ],
+        "related_to": [
+          "T2",
+          "T4"
+        ],
+        "touchpoints": [
+          "frontend/components/SessionDetailClient.tsx",
+          "frontend/e2e/published-url.spec.ts"
+        ]
+      },
+      "acceptance_criteria": [
+        "Detail page shows a Future Actions section below the timeline or in the lower action area.",
+        "Two placeholder cards are visible: Ask This Session and Continue / Resume Session.",
+        "Copy makes clear that the actions are not yet wired to destructive runtime behavior.",
+        "Playwright coverage checks the section on a published or mocked detail route."
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Make the time window explicit in payload and UI",
+      "state": "DONE",
+      "phase": "next",
+      "details": [
+        "Expose the full time window in the session artifact payload, including explicit end time.",
+        "Render a dedicated time-window block that shows started_at, ended_at, duration, and what evidence is scoped to that window.",
+        "Keep the session JSON or JSONL artifact as the source of truth for these timestamps."
+      ],
+      "context": {
+        "why": "The docs treat the session time window as one of the main coordinate layers for commits, files, timeline, and future query features.",
+        "current_gap": "The backend calculates ended_at internally but does not expose it in the payload; the frontend shows duration and modified time but not the complete window.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Time Window Expectation",
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Quality Bar For Detail Page"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [],
+        "unlocks": [
+          "T5",
+          "T6"
+        ],
+        "related_to": [
+          "T1",
+          "T7"
+        ],
+        "touchpoints": [
+          "backend/api/session_artifacts.py",
+          "frontend/lib/api.ts",
+          "frontend/components/RichSessionCard.tsx",
+          "frontend/components/SessionDetailClient.tsx",
+          "tests/test_session_artifacts.py",
+          "frontend/e2e/published-url.spec.ts"
+        ]
+      },
+      "acceptance_criteria": [
+        "Session artifact payload contains explicit start, end, and duration fields needed by the UI.",
+        "Detail page shows when the session started, when it ended, and how long it ran.",
+        "The page copy explains that commits, files, and timeline are interpreted inside that window.",
+        "Backend unit tests and frontend/e2e tests cover the new time-window behavior."
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Introduce session state model and action safety modes",
+      "state": "DONE",
+      "phase": "next",
+      "details": [
+        "Represent session operational state explicitly with labels such as archived, restorable, live, and queryable.",
+        "Represent action safety modes such as read-only, ask-only, and resume-allowed.",
+        "Use these states to control how Future Actions are presented and what they promise."
+      ],
+      "context": {
+        "why": "The product expectation requires action blocks to be honest about what is safe and what is actually available.",
+        "current_gap": "The UI only exposes a generic activity badge; there is no operational state model or safety mode in the payload or page layout.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Session State Model",
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Action Safety Rules"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [
+          "T1"
+        ],
+        "unlocks": [
+          "T8"
+        ],
+        "related_to": [
+          "T2"
+        ],
+        "touchpoints": [
+          "backend/api/session_artifacts.py",
+          "frontend/lib/api.ts",
+          "frontend/components/SessionDetailClient.tsx"
+        ]
+      },
+      "acceptance_criteria": [
+        "Session detail payload exposes a clear state or capability model for the page to render.",
+        "Future Actions cards degrade safely when the system is read-only or ask-only.",
+        "The UI does not imply resume support when the harness workflow is not implemented."
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add Topic Threads as a separate semantic layer",
+      "state": "DONE",
+      "phase": "next",
+      "details": [
+        "Add a topic_threads layer that summarizes what the session was actually about.",
+        "Keep this distinct from user intent evolution so direction and subject matter do not collapse into one list.",
+        "Show topic threads near the lower evidence/action area."
+      ],
+      "context": {
+        "why": "The docs explicitly distinguish intent from topics and use topic threads as the next semantic layer after current intent evolution.",
+        "current_gap": "The payload and UI include intent_evolution but no topic-oriented layer.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Topic Extraction Expectation",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Topic Threads"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [],
+        "unlocks": [
+          "T5",
+          "T8"
+        ],
+        "related_to": [
+          "T1",
+          "T7"
+        ],
+        "touchpoints": [
+          "backend/api/session_artifacts.py",
+          "frontend/lib/api.ts",
+          "frontend/components/SessionDetailClient.tsx",
+          "tools/nx-cognize/main.py",
+          "tools/extract-intent/main.py"
+        ]
+      },
+      "acceptance_criteria": [
+        "Session detail payload can carry topic_threads independently from intent_evolution.",
+        "The UI renders a visible Topic Threads block.",
+        "Topic labels are short, readable, and do not simply duplicate intent bullets."
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Build an evidence matrix that aligns narrative and repository signals",
+      "state": "TODO",
+      "phase": "next",
+      "details": [
+        "Create a matrix or aligned multi-column block for user direction, commits, files, and timeline.",
+        "Make it easy for the eye to compare what the user asked for with what reached the repository.",
+        "Prefer a layout that reads as one story rather than separate independent cards."
+      ],
+      "context": {
+        "why": "The roadmap calls for a shift from isolated cards to an evidence-centered dossier with strong signal comparison.",
+        "current_gap": "Current detail page shows commits, files, tools, and timeline as separate blocks with weak narrative linkage.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Evidence Layers Expectation",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Evidence Matrix"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [
+          "T2"
+        ],
+        "unlocks": [],
+        "related_to": [
+          "T4",
+          "T6",
+          "T7"
+        ],
+        "touchpoints": [
+          "frontend/components/SessionDetailClient.tsx",
+          "frontend/e2e/published-url.spec.ts"
+        ]
+      },
+      "acceptance_criteria": [
+        "The detail page includes a side-by-side or aligned evidence matrix view.",
+        "The matrix includes at least user direction, commits, files, and timeline.",
+        "A reviewer can visually compare conversation intent with repository outcomes without scanning four disconnected sections."
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Connect commit narrative to modified files",
+      "state": "TODO",
+      "phase": "next",
+      "details": [
+        "Link commits and file changes instead of rendering them as unrelated lists.",
+        "At minimum, allow the detail page to show which files are plausibly associated with the commit narrative inside the same session window.",
+        "Preserve the fact that mismatch between intent and repository output is informative, not automatically an error."
+      ],
+      "context": {
+        "why": "The roadmap explicitly says the page should connect commits with files modified and the product doc treats commits as a meaningful evidence layer.",
+        "current_gap": "The backend exposes git_commits and files_modified, but there is no linking or grouped narrative in the UI.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Git Commits As Evidence",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#After This Step"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [
+          "T2"
+        ],
+        "unlocks": [],
+        "related_to": [
+          "T5",
+          "T7"
+        ],
+        "touchpoints": [
+          "backend/api/session_artifacts.py",
+          "frontend/components/SessionDetailClient.tsx",
+          "tests/test_session_artifacts.py"
+        ]
+      },
+      "acceptance_criteria": [
+        "Commits and files are visually or structurally connected in the session detail view.",
+        "The page helps explain what likely reached the repo during the session window.",
+        "When linkage is uncertain, the UI states that clearly instead of overclaiming."
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Show evidence priority and disagreement explicitly",
+      "state": "DONE",
+      "phase": "next",
+      "details": [
+        "Make the difference between source artifact, timeline, repository signals, and derived layers visible.",
+        "Label derived content so it does not silently outrank source evidence.",
+        "When intent and commit narrative diverge, preserve that divergence as useful signal."
+      ],
+      "context": {
+        "why": "The product doc defines an evidence priority rule and explicitly says the system should show disagreement instead of hiding it.",
+        "current_gap": "Current page renders intent, commits, and timeline with similar presentation weight and without a trust hierarchy.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Evidence Priority Rule",
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Intent Layer Expectation"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [],
+        "unlocks": [],
+        "related_to": [
+          "T2",
+          "T4",
+          "T5",
+          "T6"
+        ],
+        "touchpoints": [
+          "frontend/components/RichSessionCard.tsx",
+          "frontend/components/SessionDetailClient.tsx"
+        ]
+      },
+      "acceptance_criteria": [
+        "Derived layers are visually marked as derived.",
+        "Source and timeline evidence retain higher trust presentation than summaries.",
+        "The page can show a mismatch between user direction and repository outcome without treating it as a bug by default."
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Prepare real ask and resume flows behind the placeholders",
+      "state": "TODO",
+      "phase": "later",
+      "details": [
+        "Implement the first real headless question flow over a session artifact.",
+        "Implement a real continue or resume flow only when harness-specific safety and state rules are available.",
+        "Keep the original JSON artifact untouched and operate through a separate query or runtime layer."
+      ],
+      "context": {
+        "why": "The page should eventually become an operational hub, not only an archive.",
+        "current_gap": "No ask or resume backend flow exists yet; only placeholders are currently justified.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Headless Query Expectation",
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Session As Action Surface",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Ask This Session",
+          "docs/roadmap/SESSION_DETAIL_NEXT_STEP.md#Continue / Resume"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [
+          "T1",
+          "T3"
+        ],
+        "unlocks": [],
+        "related_to": [
+          "T4"
+        ],
+        "touchpoints": [
+          "backend/api/routes",
+          "tools/",
+          "frontend/components/SessionDetailClient.tsx"
+        ]
+      },
+      "acceptance_criteria": [
+        "Ask flow can answer a session question without modifying the source artifact.",
+        "Resume flow is gated by explicit safety and capability checks.",
+        "The UI distinguishes between available and unavailable operational actions."
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Expand verification for visible dossier behaviors",
+      "state": "DONE",
+      "phase": "continuous",
+      "details": [
+        "Add or update backend tests for payload shape changes.",
+        "Add or update frontend and Playwright tests for new visible dossier sections and state cues.",
+        "Use published verification for any major visible behavior change."
+      ],
+      "context": {
+        "why": "The repo quality bar and memory cards require tests and published verification for visible UI, routing, auth, and payload changes.",
+        "current_gap": "Existing tests cover anchors, commits, and timeline, but not the future actions, time-window expansion, evidence matrix, topic threads, or state model.",
+        "ssot_refs": [
+          "docs/product/HIGH_LEVEL_EXPECTATIONS.md#Engineering Expectation",
+          ".MEMORY/published-url-playwright.md",
+          ".MEMORY/13-e2e-smoke-visual-pipeline.md",
+          ".MEMORY/15-published-stability-runbook.md"
+        ]
+      },
+      "interconnections": {
+        "depends_on": [],
+        "unlocks": [],
+        "related_to": [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8"
+        ],
+        "touchpoints": [
+          "tests/test_session_artifacts.py",
+          "frontend/e2e/published-url.spec.ts",
+          "frontend/scripts/e2e-smoke-pipeline.mjs"
+        ]
+      },
+      "acceptance_criteria": [
+        "Every new visible dossier section has test coverage.",
+        "Payload changes are covered by backend tests.",
+        "Major UI changes are verified against the published URL before closure."
+      ]
+    }
+  ]
+}

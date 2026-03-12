@@ -155,7 +155,12 @@ class SessionArtifactsTests(unittest.TestCase):
             self.assertEqual(payload["session"]["record_count"], 2)
             self.assertEqual(payload["session"]["parse_errors"], 0)
             self.assertEqual(payload["session"]["route"]["id"], "rollout-demo.jsonl")
+            self.assertEqual(payload["session"]["started_at"], "2026-03-12T08:00:00+00:00")
+            self.assertEqual(payload["session"]["ended_at"], "2026-03-12T08:05:00+00:00")
+            self.assertEqual(payload["session"]["ended_at_local"], "2026-03-12 11:05:00 MSK")
             self.assertEqual(payload["session"]["duration_human"], "5 мин")
+            self.assertEqual(payload["session"]["time_window"]["ended_at"], "2026-03-12T08:05:00+00:00")
+            self.assertIn("inside this session window", payload["session"]["time_window"]["scope_summary"])
             self.assertEqual(payload["session"]["message_anchors"]["first"], "hello")
             self.assertEqual(payload["session"]["message_anchors"]["last"], "bye")
             self.assertEqual(payload["session"]["message_anchors"]["middle"], [
@@ -163,12 +168,77 @@ class SessionArtifactsTests(unittest.TestCase):
                 "patch session page",
                 "ship anchors",
             ])
+            self.assertEqual(payload["session"]["topic_threads"], [
+                "session detail",
+                "session anchors",
+                "session page",
+                "diagnostics",
+            ])
+            self.assertEqual(payload["session"]["state_model"]["labels"], ["archived"])
+            self.assertEqual(payload["session"]["state_model"]["safety_mode"], "read-only")
+            self.assertIn("только для чтения", payload["session"]["state_model"]["summary"])
             self.assertEqual(
                 [event["event_type"] for event in payload["session"]["timeline"]],
                 ["user_message", "tool_call", "tool_call", "file_edit", "tool_call"],
             )
             self.assertEqual(payload["session"]["git_repository_root"], "/home/pets/zoo/agents_sessions_dashboard")
             self.assertEqual(payload["session"]["git_commits"][0]["title"], "Add session anchors block")
+
+    def test_build_session_detail_payload_uses_safe_ask_only_state_when_query_layer_is_available(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "rollout-demo.jsonl"
+            file_path.write_text(json.dumps({"type": "session_meta"}), encoding="utf-8")
+
+            with patch("backend.api.session_artifacts.build_session_git_commit_context", return_value={
+                "repository_root": None,
+                "commits": [],
+            }):
+                payload = build_session_detail_payload(
+                    {
+                        "session_id": "session-ask-only",
+                        "agent_type": "codex",
+                        "agent_name": "Codex",
+                        "cwd": "/home/pets/zoo/agents_sessions_dashboard",
+                        "timestamp_start": "2026-03-12T08:00:00+00:00",
+                        "timestamp_end": "2026-03-12T08:05:00+00:00",
+                        "status": "completed",
+                        "query_enabled": True,
+                        "user_messages": ["спросить про timeline"],
+                    },
+                    file_path,
+                )
+
+        self.assertEqual(payload["session"]["state_model"]["labels"], ["archived", "queryable"])
+        self.assertEqual(payload["session"]["state_model"]["safety_mode"], "ask-only")
+        self.assertTrue(payload["session"]["state_model"]["capabilities"]["can_ask"])
+        self.assertFalse(payload["session"]["state_model"]["capabilities"]["can_resume"])
+
+    def test_build_session_detail_payload_uses_resume_allowed_state_when_resume_is_explicitly_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "rollout-demo.jsonl"
+            file_path.write_text(json.dumps({"type": "session_meta"}), encoding="utf-8")
+
+            with patch("backend.api.session_artifacts.build_session_git_commit_context", return_value={
+                "repository_root": None,
+                "commits": [],
+            }):
+                payload = build_session_detail_payload(
+                    {
+                        "session_id": "session-resume",
+                        "agent_type": "codex",
+                        "agent_name": "Codex",
+                        "cwd": "/home/pets/zoo/agents_sessions_dashboard",
+                        "timestamp_start": "2026-03-12T08:00:00+00:00",
+                        "timestamp_end": "2026-03-12T08:05:00+00:00",
+                        "status": "active",
+                        "resume_supported": True,
+                    },
+                    file_path,
+                )
+
+        self.assertEqual(payload["session"]["state_model"]["labels"], ["live", "restorable"])
+        self.assertEqual(payload["session"]["state_model"]["safety_mode"], "resume-allowed")
+        self.assertTrue(payload["session"]["state_model"]["capabilities"]["can_resume"])
 
     def test_build_timeline_keeps_non_consecutive_duplicate_event_types(self) -> None:
         class DummyParser(SessionParser):
