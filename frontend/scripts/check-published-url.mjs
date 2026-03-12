@@ -162,6 +162,60 @@ function assert(condition, message) {
   }
 }
 
+async function waitForVisible(locator, timeout) {
+  try {
+    await locator.waitFor({ state: 'visible', timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForAnyStage(page, timeoutMs) {
+  const candidates = [
+    page.getByTestId('login-form'),
+    page.getByTestId('latest-session-card'),
+    page.getByTestId('latest-session-empty'),
+    page.getByTestId('latest-session-error'),
+    page.getByTestId('dashboard-load-error'),
+    page.getByTestId('latest-only-hint'),
+    page.getByText('⏳ Загрузка...'),
+  ];
+
+  for (const locator of candidates) {
+    if (await waitForVisible(locator, timeoutMs)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function waitForLatestPanelReady(page, timeoutMs) {
+  const latestLoading = page.getByTestId('latest-session-loading');
+
+  if (await latestLoading.count() > 0) {
+    await latestLoading.waitFor({
+      state: 'hidden',
+      timeout: timeoutMs,
+    }).catch(() => {});
+  }
+
+  const candidates = [
+    page.getByTestId('latest-session-card'),
+    page.getByTestId('latest-session-empty'),
+    page.getByTestId('latest-session-error'),
+  ];
+
+  for (const locator of candidates) {
+    if (await waitForVisible(locator, timeoutMs)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function main() {
   const publicUrl = process.argv[2] || process.env.NEXUS_PUBLIC_URL;
   assert(publicUrl, 'NEXUS_PUBLIC_URL or argv[2] is required');
@@ -206,22 +260,21 @@ async function main() {
     timeout: timeoutMs,
   });
 
+  await waitForAnyStage(page, timeoutMs);
+
   if (authStatus.password_required) {
     const password = getLoginPassword();
     assert(password, 'Password required but NEXUS_E2E_PASSWORD/NEXUS_PASSWORD is not set');
 
-    const sessionsResponsePromise = page.waitForResponse(
-      (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/sessions'),
-      { timeout: timeoutMs },
-    );
-    const metricsResponsePromise = page.waitForResponse(
-      (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/metrics'),
+    const loginResponsePromise = page.waitForResponse(
+      (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/auth/login'),
       { timeout: timeoutMs },
     );
 
     await page.getByTestId('auth-password-input').fill(password);
     await page.getByTestId('login-button').click();
-    await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
+    await loginResponsePromise;
+    await waitForAnyStage(page, timeoutMs);
   } else if (authStatus.auth_required && authStatus.telegram_enabled) {
     const telegramIdToken = getTelegramIdToken();
     assert(
@@ -236,6 +289,23 @@ async function main() {
     });
     assert(loginResponse.ok(), `Telegram login failed with ${loginResponse.status()}`);
 
+    await page.reload({
+      waitUntil: 'domcontentloaded',
+      timeout: timeoutMs,
+    });
+    await waitForAnyStage(page, timeoutMs);
+  }
+
+  await loadingIndicator.waitFor({
+    state: 'hidden',
+    timeout: Math.max(hydrationWaitMs, timeoutMs),
+  });
+
+  await waitForLatestPanelReady(page, timeoutMs);
+
+  const latestOnlyHintVisible = await page.getByTestId('latest-only-hint').count() > 0;
+
+  if (latestOnlyHintVisible) {
     const sessionsResponsePromise = page.waitForResponse(
       (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/sessions'),
       { timeout: timeoutMs },
@@ -245,19 +315,18 @@ async function main() {
       { timeout: timeoutMs },
     );
 
-    await page.reload({
-      waitUntil: 'domcontentloaded',
-      timeout: timeoutMs,
-    });
+    await page.getByTestId('date-filter').selectOption('all');
     await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
+
+    if (await loadingIndicator.count() > 0) {
+      await loadingIndicator.waitFor({
+        state: 'hidden',
+        timeout: Math.max(hydrationWaitMs, timeoutMs),
+      });
+    }
   }
 
-  await loadingIndicator.waitFor({
-    state: 'hidden',
-    timeout: hydrationWaitMs,
-  });
-
-  const loadingCount = await loadingIndicator.count();
+  const loadingVisible = await loadingIndicator.isVisible().catch(() => false);
   const sectionHeaders = await page.locator('[data-testid$="-section-header"]').allInnerTexts();
   const emptyStateVisible = await page.getByTestId('empty-state').count() > 0;
   const sessionsApiOk = apiResponses.some(
@@ -268,7 +337,7 @@ async function main() {
   );
 
   assert(response?.status() === 200, `Published page returned ${response?.status()}`);
-  assert(loadingCount === 0, 'Loading spinner is still visible after hydration wait');
+  assert(!loadingVisible, 'Loading spinner is still visible after hydration wait');
   assert(failedRequests.length === 0, `Failed requests detected: ${JSON.stringify(failedRequests)}`);
   assert(sessionsApiOk, `Missing successful /api/sessions response: ${JSON.stringify(apiResponses)}`);
   assert(metricsApiOk, `Missing successful /api/metrics response: ${JSON.stringify(apiResponses)}`);

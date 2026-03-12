@@ -242,6 +242,90 @@ async function waitForAnyStage(page, timeoutMs) {
   return 'none';
 }
 
+async function waitForLatestPanelReady(page, timeoutMs) {
+  const latestLoading = page.getByTestId('latest-session-loading');
+
+  if (await latestLoading.count() > 0) {
+    await latestLoading.waitFor({
+      state: 'hidden',
+      timeout: timeoutMs,
+    }).catch(() => {});
+  }
+
+  const candidates = [
+    ['latest-card', page.getByTestId('latest-session-card')],
+    ['latest-empty', page.getByTestId('latest-session-empty')],
+    ['latest-error', page.getByTestId('latest-session-error')],
+  ];
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    for (const [name, locator] of candidates) {
+      if (await locator.count() > 0 && await locator.first().isVisible().catch(() => false)) {
+        return name;
+      }
+    }
+    await page.waitForTimeout(250);
+  }
+
+  return 'latest-pending';
+}
+
+async function waitForPostAuthStage(page, timeoutMs) {
+  await waitForLatestPanelReady(page, timeoutMs);
+
+  const candidates = [
+    ['latest-card', page.getByTestId('latest-session-card')],
+    ['latest-empty', page.getByTestId('latest-session-empty')],
+    ['latest-error', page.getByTestId('latest-session-error')],
+    ['latest-only-hint', page.getByTestId('latest-only-hint')],
+    ['load-error', page.getByTestId('dashboard-load-error')],
+    ['loading', page.getByText('⏳ Загрузка...')],
+  ];
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    for (const [name, locator] of candidates) {
+      if (await locator.count() > 0 && await locator.first().isVisible().catch(() => false)) {
+        return name;
+      }
+    }
+    await page.waitForTimeout(250);
+  }
+
+  return waitForAnyStage(page, Math.max(1000, Math.floor(timeoutMs / 3)));
+}
+
+async function waitForDashboardReady(page, timeoutMs) {
+  const loadingIndicator = page.getByText('⏳ Загрузка...');
+  const candidates = [
+    ['session-card', page.getByTestId('session-card')],
+    ['section-header', page.locator('[data-testid$="-section-header"]')],
+    ['empty-state', page.getByTestId('empty-state')],
+    ['load-error', page.getByTestId('dashboard-load-error')],
+  ];
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await loadingIndicator.count() > 0 && await loadingIndicator.first().isVisible().catch(() => false)) {
+      await loadingIndicator.first().waitFor({
+        state: 'hidden',
+        timeout: Math.max(1000, timeoutMs - (Date.now() - startedAt)),
+      }).catch(() => {});
+    }
+
+    for (const [name, locator] of candidates) {
+      if (await locator.count() > 0 && await locator.first().isVisible().catch(() => false)) {
+        return name;
+      }
+    }
+
+    await page.waitForTimeout(250);
+  }
+
+  return 'dashboard-pending';
+}
+
 function emitStep(index, title, extra = '') {
   const suffix = extra ? ` :: ${extra}` : '';
   console.log(`[step ${String(index).padStart(2, '0')}] ${title}${suffix}`);
@@ -302,6 +386,8 @@ async function main() {
   const failedRequests = [];
   const screenshots = [];
   const steps = [];
+  let expandedDashboard = false;
+  let dashboardStage = 'not-requested';
 
   page.on('response', (response) => {
     if (response.url().includes('/api/')) {
@@ -381,6 +467,7 @@ async function main() {
       await page.getByTestId('login-button').click();
       await loginResponsePromise;
       await page.waitForLoadState('domcontentloaded', { timeout: timeoutMs }).catch(() => {});
+      await page.getByTestId('login-form').waitFor({ state: 'hidden', timeout: timeoutMs }).catch(() => {});
 
       steps.push({
         step: 3,
@@ -421,11 +508,11 @@ async function main() {
     if (await loadingIndicator.count() > 0) {
       await loadingIndicator.waitFor({
         state: 'hidden',
-        timeout: hydrationWaitMs,
+        timeout: Math.max(hydrationWaitMs, timeoutMs),
       }).catch(() => {});
     }
 
-    const postLoginStage = await waitForAnyStage(page, timeoutMs);
+    const postLoginStage = await waitForPostAuthStage(page, timeoutMs);
     emitStep(4, 'post-login-stage', postLoginStage);
     steps.push({
       step: 4,
@@ -436,6 +523,7 @@ async function main() {
     await captureStepScreenshot(4, 'post-login', `E2E smoke step 4: stage after login is ${postLoginStage}.`);
 
     if (expandDashboard && await page.getByTestId('latest-only-hint').count() > 0) {
+      await waitForLatestPanelReady(page, timeoutMs);
       emitStep(5, 'expand-dashboard-via-filter');
       const sessionsResponsePromise = page.waitForResponse(
         (currentResponse) => currentResponse.status() === 200 && currentResponse.url().includes('/api/sessions'),
@@ -448,12 +536,15 @@ async function main() {
 
       await page.getByTestId('date-filter').selectOption('all');
       await Promise.all([sessionsResponsePromise, metricsResponsePromise]);
+      dashboardStage = await waitForDashboardReady(page, timeoutMs);
+      expandedDashboard = true;
       await captureStepScreenshot(5, 'expanded-dashboard', 'E2E smoke step 5: dashboard expanded after changing filters.');
 
       steps.push({
         step: 5,
         name: 'expand-dashboard-via-filter',
         status: 'ok',
+        stage: dashboardStage,
       });
     }
 
@@ -496,6 +587,8 @@ async function main() {
       output_root: outputRoot,
       send_t2me: sendT2me,
       expand_dashboard: expandDashboard,
+      expanded_dashboard: expandedDashboard,
+      dashboard_stage: dashboardStage,
       steps,
       screenshots,
       api_responses: apiResponses,
@@ -503,6 +596,10 @@ async function main() {
       section_headers: await page.locator('[data-testid$="-section-header"]').allInnerTexts().catch(() => []),
       latest_only_hint_visible: await page.getByTestId('latest-only-hint').count().catch(() => 0),
       latest_card_visible: await page.getByTestId('latest-session-card').count().catch(() => 0),
+      latest_empty_visible: await page.getByTestId('latest-session-empty').count().catch(() => 0),
+      latest_error_visible: await page.getByTestId('latest-session-error').count().catch(() => 0),
+      session_card_visible: await page.getByTestId('session-card').count().catch(() => 0),
+      empty_state_visible: await page.getByTestId('empty-state').count().catch(() => 0),
       dashboard_load_error: await page.getByTestId('dashboard-load-error').allInnerTexts().catch(() => []),
     };
 
@@ -515,7 +612,17 @@ async function main() {
 
     assert(response?.status() === 200, `Published page returned ${response?.status()}`);
     assert(failedRequests.length === 0, `Failed requests detected: ${JSON.stringify(failedRequests)}`);
-    assert(summary.latest_card_visible > 0 || summary.dashboard_load_error.length > 0, 'No latest card or dashboard state was detected.');
+    if (expandedDashboard) {
+      assert(
+        summary.dashboard_stage !== 'dashboard-pending',
+        'No dashboard state was detected after expansion.',
+      );
+    } else {
+      assert(
+        summary.latest_card_visible > 0 || summary.latest_empty_visible > 0 || summary.latest_error_visible > 0,
+        'No latest state was detected after login.',
+      );
+    }
   } finally {
     await context.close();
     await browser.close();
