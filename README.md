@@ -37,10 +37,19 @@ http://107.174.231.22:8888
 Быстрый запуск опубликованного стека:
 
 ```bash
-./start_published.sh
+./scripts/start_published.sh
 ```
 
-По умолчанию `start_published.sh` после старта гоняет Playwright-проверку по
+Полное восстановление published-стека с доказательством через headless Playwright,
+скриншотами и повторными confidence-прогонами:
+
+```bash
+make published-restore
+```
+
+Все project-level shell scripts теперь лежат в `scripts/`.
+
+По умолчанию `scripts/start_published.sh` после старта гоняет Playwright-проверку по
 реальному published URL. Отключается через `NEXUS_PLAYWRIGHT_CHECK_ENABLED=0`.
 Если на хосте ещё нет Chromium, скрипт попытается один раз установить его
 автоматически через `npx playwright install chromium`. Отдельно можно запустить:
@@ -66,6 +75,12 @@ frontend через `frontend/lib/runtime-config.ts`.
 ```bash
 ./deploy/check_published_url.sh
 ./deploy/check_published_url.sh http://107.174.231.22:8888
+```
+
+Если нужен автоподъём после ребута и минутный watchdog:
+
+```bash
+./scripts/install_published_watchdog.sh
 ```
 
 ## Debug Logging
