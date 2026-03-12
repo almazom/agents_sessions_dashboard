@@ -1,3 +1,6 @@
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -7,10 +10,21 @@ import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CLI_MAIN = REPO_ROOT / "tools" / "nx-collect" / "main.py"
+
+
+def load_cli_module():
+    spec = importlib.util.spec_from_file_location("nx_collect_main", CLI_MAIN)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Unable to load nx-collect module")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def write_jsonl(path: Path, records) -> None:
@@ -501,6 +515,67 @@ class NxCollectTests(unittest.TestCase):
                 "усилить карточку сессии",
                 "сделать latest карточку добавить intent",
             ])
+
+    def test_latest_suppresses_cognize_errors_when_local_fallback_is_available(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            codex_root = root / "codex"
+            session_file = codex_root / "2026" / "03" / "11" / "rollout-fallback.jsonl"
+            write_jsonl(
+                session_file,
+                [
+                    {"timestamp": "2026-03-11T08:00:00+00:00", "role": "user", "content": "start server and fix landing"},
+                    {"timestamp": "2026-03-11T08:10:00+00:00", "role": "user", "content": "read aura and agents docs"},
+                    {"timestamp": "2026-03-11T08:20:00+00:00", "role": "user", "content": "run full diagnostics on published url"},
+                ],
+            )
+            os.utime(session_file, (1_836_000_000, 1_836_000_000))
+
+            config_path = root / "providers.json"
+            write_json(
+                config_path,
+                {
+                    "default_providers": ["codex"],
+                    "providers": {
+                        "codex": {
+                            "root": str(codex_root),
+                            "include": ["**/rollout-*.jsonl"],
+                            "exclude": [],
+                        }
+                    },
+                },
+            )
+
+            module = load_cli_module()
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+
+            with mock.patch.object(
+                module,
+                "run_cognitive_intent",
+                return_value=(None, None, None, "[E300] PROVIDER_FAILURE: all providers failed"),
+            ), mock.patch.object(
+                sys,
+                "argv",
+                [
+                    str(CLI_MAIN),
+                    "--latest",
+                    "--providers-config",
+                    str(config_path),
+                    "--timezone",
+                    "UTC",
+                ],
+            ), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                exit_code = module.main()
+
+            self.assertEqual(exit_code, 0, stderr.getvalue())
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["latest"]["intent_summary_source"], "local_fallback")
+            self.assertEqual(payload["latest"]["intent_summary_provider"], "nx-collect")
+            self.assertEqual(len(payload["latest"]["intent_evolution"]), 3)
+            self.assertTrue(payload["latest"]["intent_evolution"][0].startswith("start server"))
+            self.assertIn("diagnostics", payload["latest"]["intent_evolution"][-1])
+            self.assertEqual(payload["errors"], [])
 
     def test_date_today_returns_only_today_sessions(self) -> None:
         """Test --date today filters sessions modified today."""

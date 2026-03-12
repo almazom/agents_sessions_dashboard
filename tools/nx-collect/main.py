@@ -964,6 +964,21 @@ def enrich_candidate(
     return summary, None
 
 
+def build_enrichment_error(candidate: Candidate, summary: Dict[str, Any], parse_error: str) -> Optional[Dict[str, str]]:
+    stage = "cognize" if parse_error.startswith("cognize: ") else "parse"
+    if stage == "cognize":
+        intent_steps = summary.get("intent_evolution") or []
+        if summary.get("intent_summary_source") == "local_fallback" and intent_steps:
+            return None
+
+    detail = parse_error.removeprefix("cognize: ")
+    return {
+        "provider": candidate.provider,
+        "stage": stage,
+        "detail": f"{candidate.path}: {detail}",
+    }
+
+
 def validate_result(payload: Dict[str, Any]) -> None:
     required = ["meta", "query", "sessions", "latest", "errors"]
     missing = [key for key in required if key not in payload]
@@ -1067,14 +1082,9 @@ def main() -> int:
             cognize_runtime_timeout=args.cognize_runtime_timeout,
         )
         if parse_error:
-            stage = "cognize" if parse_error.startswith("cognize: ") else "parse"
-            errors.append(
-                {
-                    "provider": candidate.provider,
-                    "stage": stage,
-                    "detail": f"{candidate.path}: {parse_error.removeprefix('cognize: ')}",
-                }
-            )
+            error_entry = build_enrichment_error(candidate, summary, parse_error)
+            if error_entry:
+                errors.append(error_entry)
         enriched_cache[cache_key] = summary
         return summary
 
@@ -1107,14 +1117,9 @@ def main() -> int:
                 cognize_runtime_timeout=args.cognize_runtime_timeout,
             )
             if parse_error:
-                stage = "cognize" if parse_error.startswith("cognize: ") else "parse"
-                errors.append(
-                    {
-                        "provider": candidate.provider,
-                        "stage": stage,
-                        "detail": f"{candidate.path}: {parse_error.removeprefix('cognize: ')}",
-                    }
-                )
+                error_entry = build_enrichment_error(candidate, summary, parse_error)
+                if error_entry:
+                    errors.append(error_entry)
             sessions.append(summary)
         
         result = {
