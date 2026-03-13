@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:47:00Z",
+    "last_updated": "2026-03-13T10:53:57Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1724,7 +1724,7 @@
       "title": "Определить boot payload schema",
       "description": "Сформировать контракт boot payload для interactive страницы.",
       "context": "Frontend нельзя запускать без понятного initial payload shape.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Дать странице stable input contract до live attach.",
       "estimation": {
         "hours": 3,
@@ -1780,16 +1780,22 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "contracts/examples/interactive-boot-payload.sample.json",
+          "contracts/interactive-boot-payload.schema.json",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/boot_payload_schema.py",
+          "tests/interactive/test_task_013.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -1805,6 +1811,30 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Started the boot payload schema task immediately after the interactive capability payload was proven."
+        },
+        {
+          "timestamp": "2026-03-13T10:49:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Boot payload schema, sample payload, and task-level green/red checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T10:50:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Boot payload contract layer was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T10:51:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 24744b9 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T10:53:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reproduce commands passed with CSM 100."
         }
       ],
       "lane": "boot-payload",
@@ -1820,7 +1850,7 @@
       "title": "Сделать boot payload serializer",
       "description": "Собрать serializer, который выдает initial boot payload по fixture-backed session.",
       "context": "Schema без serializer не проверяет жизнеспособность контракта.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Дать backend реальный путь к boot payload.",
       "estimation": {
         "hours": 4,
@@ -1896,6 +1926,12 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T10:53:57Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the boot payload serializer task immediately after the schema contract was proven."
         }
       ],
       "lane": "boot-payload",
