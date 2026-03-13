@@ -273,6 +273,57 @@ export interface SessionAskResponse {
   };
 }
 
+export interface InteractiveBootRoute {
+  harness: string;
+  route_id: string;
+  session_href: string;
+  interactive_href: string;
+}
+
+export interface InteractiveBootSession {
+  session_id: string;
+  agent_name: string;
+  cwd: string;
+  status: string;
+  resume_supported: boolean;
+}
+
+export interface InteractiveArtifactSnapshot {
+  path: string;
+  artifact_name: string;
+  byte_size: number;
+  sha256: string;
+}
+
+export interface InteractiveTailSnapshot {
+  items: Array<Record<string, unknown>>;
+  summary_hint: string | null;
+  has_more_before: boolean;
+}
+
+export interface InteractiveReplaySnapshot {
+  items: Array<Record<string, unknown>>;
+  history_complete: boolean;
+}
+
+export interface InteractiveRuntimeIdentity {
+  thread_id: string;
+  session_id: string;
+  transport: string;
+  source: string;
+}
+
+export interface InteractiveBootPayload {
+  version: number;
+  route: InteractiveBootRoute;
+  session: InteractiveBootSession;
+  interactive_session: SessionInteractiveCapability;
+  runtime_identity: InteractiveRuntimeIdentity;
+  artifact: InteractiveArtifactSnapshot;
+  tail: InteractiveTailSnapshot;
+  replay: InteractiveReplaySnapshot;
+}
+
 export interface AuthStatus {
   authenticated: boolean;
   password_required: boolean;
@@ -419,6 +470,15 @@ class ApiClient {
   async getSessionArtifact(harness: string, artifactId: string): Promise<SessionArtifactResponse> {
     return this.fetch<SessionArtifactResponse>(
       `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}`,
+    );
+  }
+
+  async getSessionArtifactInteractiveBoot(
+    harness: string,
+    artifactId: string,
+  ): Promise<InteractiveBootPayload> {
+    return this.fetch<InteractiveBootPayload>(
+      `/api/session-artifacts/${encodeURIComponent(harness)}/${encodeURIComponent(artifactId)}/interactive`,
     );
   }
 
