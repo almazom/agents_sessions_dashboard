@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:34:40Z",
+    "last_updated": "2026-03-13T11:40:20Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -2626,7 +2626,7 @@
       "title": "Сделать reconnect bootstrap snapshot",
       "description": "Собрать отдельный bootstrap для reconnect cases с актуальным status snapshot.",
       "context": "Reconnect нельзя решать тем же payload без дополнительных сигналов.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать повторное подключение predictably resumable.",
       "estimation": {
         "hours": 4,
@@ -2682,16 +2682,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_reconnect.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_020.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2701,6 +2705,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:37:10Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after TASK-019 fixed the replay/live seam needed for reconnect bootstrap reuse."
+        },
+        {
+          "timestamp": "2026-03-13T11:39:20Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Reconnect bootstrap snapshot helper and green/red task checks passed on top of the new handoff seam."
+        },
+        {
+          "timestamp": "2026-03-13T11:39:40Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Reconnect test setup was simplified into one helper while preserving reconnect-only behavior."
+        },
+        {
+          "timestamp": "2026-03-13T11:40:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-020 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:40:20Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red reconnect bootstrap commands passed with CSM 100."
         }
       ],
       "lane": "handoff-status",
