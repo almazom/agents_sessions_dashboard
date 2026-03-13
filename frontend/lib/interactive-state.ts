@@ -22,6 +22,7 @@ export interface InteractiveRouteState {
   composer: InteractiveComposerState;
 }
 
+// Keep interactive route behavior derived from the boot payload until live transport lands.
 function summarizeEntry(item: Record<string, unknown>, fallbackId: string): InteractiveTimelineEntry {
   const summary =
     typeof item.summary === 'string'

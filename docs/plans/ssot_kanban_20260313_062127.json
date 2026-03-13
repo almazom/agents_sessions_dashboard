@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T10:42:04Z",
+    "last_updated": "2026-03-13T10:45:13Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -4627,7 +4627,7 @@
       "title": "Сделать live timeline and composer state",
       "description": "Собрать live timeline, composer и основной frontend state machine.",
       "context": "Сердце browser continuation живет именно здесь.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Дать странице поведение настоящего interactive continuation, а не статичного досье.",
       "estimation": {
         "hours": 4,
@@ -4687,25 +4687,65 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/lib/interactive-state.ts",
+          "tests/interactive/interactive_live_state.py",
+          "tests/interactive/test_task_036.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "python3 -m pytest tests/interactive/test_task_036.py -k green",
+        "python3 -m pytest tests/interactive/test_task_036.py -k red",
+        "cd frontend && npx next lint --file components/InteractiveSessionShell.tsx --file lib/interactive-state.ts"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T10:43:10Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the main frontend state seam for timeline and composer behavior on top of the interactive shell."
+        },
+        {
+          "timestamp": "2026-03-13T10:44:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Kept the state machine narrow with only ready and blocked phases and one derived composer model."
+        },
+        {
+          "timestamp": "2026-03-13T10:44:20Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Live timeline rendering and composer behavior stay derived from one helper instead of scattering state rules across the shell."
+        },
+        {
+          "timestamp": "2026-03-13T10:44:50Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Green and red task checks passed, and targeted lint confirmed the touched frontend state files remain valid."
+        },
+        {
+          "timestamp": "2026-03-13T10:45:13Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Live timeline and composer state reached CSM 100 with a dedicated frontend state helper and shell-level composer model."
         }
       ],
       "lane": "frontend-route",

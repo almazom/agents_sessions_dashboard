@@ -87,6 +87,7 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
   }
 
   const routeState = buildInteractiveRouteState(payload);
+  const backHref = payload.route.session_href;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_38%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] px-6 py-10 text-slate-100">
@@ -99,7 +100,7 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
               <p className="max-w-3xl text-sm leading-7 text-slate-300">{payload.interactive_session.detail}</p>
             </div>
             <Link
-              href={payload.route.session_href}
+              href={backHref}
               className="inline-flex rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500 hover:text-white"
             >
               Back to session dossier
