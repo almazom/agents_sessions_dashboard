@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T08:30:00Z",
+    "last_updated": "2026-03-13T08:36:00Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -565,7 +565,7 @@
       "title": "Поднять backend pytest harness",
       "description": "Собрать backend test harness для fixture-backed interactive сценариев.",
       "context": "Без test harness поздние backend карточки будут зависеть от ручного запуска.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать backend проверки автономными и повторяемыми.",
       "estimation": {
         "hours": 4,
@@ -621,20 +621,53 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/backend_harness.py",
+          "tests/interactive/test_task_004.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
       "history": [
+        {
+          "timestamp": "2026-03-13T08:31:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Dependencies resolved after TASK-001; implementation started."
+        },
+        {
+          "timestamp": "2026-03-13T08:32:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Backend pytest harness and task tests are green; starting simplification."
+        },
+        {
+          "timestamp": "2026-03-13T08:33:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Simplification pass finished; ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T08:34:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task commit created; running reproduce checks on committed state."
+        },
+        {
+          "timestamp": "2026-03-13T08:35:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Backend pytest harness reproduce checks passed with CSM 100."
+        },
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
