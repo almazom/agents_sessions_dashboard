@@ -18,6 +18,14 @@ class InteractiveIdentityNotFound(LookupError):
     """Raised when no runtime identity mapping exists for the artifact route."""
 
 
+class InteractiveIdentityMismatch(LookupError):
+    """Raised when artifact identity points to a different runtime mapping."""
+
+
+class InteractiveIdentityStale(LookupError):
+    """Raised when the runtime mapping is stale relative to the artifact session."""
+
+
 def _load_json_object(path: Path, *, label: str) -> Dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         payload = json.load(handle)
@@ -97,18 +105,57 @@ def resolve_runtime_identity(
     )
 
 
+def evaluate_runtime_identity_mapping(
+    mapping: Dict[str, Any],
+    *,
+    harness: str,
+    artifact_route_id: str,
+    artifact_session_id: str,
+) -> Dict[str, Any]:
+    artifact = mapping.get("artifact") or {}
+    runtime = mapping.get("runtime") or {}
+
+    if artifact.get("route_id") != artifact_route_id:
+        raise InteractiveIdentityNotFound(
+            f"missing runtime identity mapping for {harness}/{artifact_route_id}"
+        )
+    if artifact.get("harness") != harness:
+        raise InteractiveIdentityMismatch(
+            f"runtime identity harness mismatch for {harness}/{artifact_route_id}"
+        )
+    if artifact.get("session_id") != artifact_session_id:
+        raise InteractiveIdentityStale(
+            f"runtime identity is stale for {harness}/{artifact_route_id}"
+        )
+    if runtime.get("session_id") != artifact_session_id:
+        raise InteractiveIdentityStale(
+            f"runtime session id is stale for {harness}/{artifact_route_id}"
+        )
+
+    return mapping
+
+
 def resolve_runtime_identity_from_artifact_route(
     *,
     harness: str,
     artifact_route_id: str,
+    artifact_session_id: str | None = None,
     fixture_path: Path | None = None,
     schema_path: Path | None = None,
 ) -> Dict[str, Any]:
     schema_payload = load_runtime_identity_schema(schema_path)
     fixture_payload = load_runtime_identity_fixture(fixture_path)
     validate_runtime_identity_fixture(fixture_payload, schema_payload=schema_payload)
-    return resolve_runtime_identity(
+    mapping = resolve_runtime_identity(
         fixture_payload,
         harness=harness,
         artifact_route_id=artifact_route_id,
+    )
+    if artifact_session_id is None:
+        return mapping
+    return evaluate_runtime_identity_mapping(
+        mapping,
+        harness=harness,
+        artifact_route_id=artifact_route_id,
+        artifact_session_id=artifact_session_id,
     )
