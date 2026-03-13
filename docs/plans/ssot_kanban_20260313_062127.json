@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:19:05Z",
+    "last_updated": "2026-03-13T11:28:40Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -2249,7 +2249,7 @@
       "title": "Добавить history complete marker",
       "description": "Явно отметить границу между replay и live потоком.",
       "context": "Без явного marker фронтенд не поймет, где заканчивается архивная часть.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Сделать переход replay -> live наблюдаемым и тестируемым.",
       "estimation": {
         "hours": 3,
@@ -2305,16 +2305,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_replay.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_017.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2330,6 +2334,30 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Activated after replay event snapshot delivery proved the archive side of the handoff."
+        },
+        {
+          "timestamp": "2026-03-13T11:20:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "History complete marker helper and green/red task checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:21:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "History complete marker change was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T11:21:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 7b6c4f7 and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T11:21:40Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red history complete marker commands passed with CSM 100."
         }
       ],
       "lane": "replay",
@@ -2345,7 +2373,7 @@
       "title": "Определить runtime status contract",
       "description": "Сформировать enum и payload для idle, active, waiting, error и reconnect статусов.",
       "context": "Browser continuation требует явной модели runtime state.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать lifecycle состояния единообразными для backend и frontend.",
       "estimation": {
         "hours": 3,
@@ -2402,16 +2430,23 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_status.py",
+          "contracts/examples/interactive-runtime-status.sample.json",
+          "contracts/interactive-runtime-status.schema.json",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/runtime_status_schema.py",
+          "tests/interactive/test_task_018.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2421,6 +2456,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:21:42Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated as the next lifecycle contract card after the replay/live boundary marker was proven."
+        },
+        {
+          "timestamp": "2026-03-13T11:27:40Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Runtime status schema, sample payload, and green/red task checks were implemented and passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:28:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Focused simplification removed redundant validation and kept the contract payload explicit."
+        },
+        {
+          "timestamp": "2026-03-13T11:28:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-018 commit content was prepared after targeted pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:28:40Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red runtime status contract commands passed with CSM 100."
         }
       ],
       "lane": "handoff-status",

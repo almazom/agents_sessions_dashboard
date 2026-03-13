@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "thread_id": "thread-fixture-codex-001",
+  "session_id": "sess-fixture-codex-001",
+  "status": "waiting",
+  "label": "Waiting",
+  "detail": "The runtime is waiting for user input before it can continue.",
+  "source": "live_notification",
+  "transport_state": "connected",
+  "can_send_input": true,
+  "can_resume_stream": false,
+  "raw_status": {
+    "type": "active",
+    "active_flags": [
+      "waitingOnUserInput"
+    ]
+  },
+  "wait_reason": "user_input",
+  "reconnect_hint": null,
+  "observed_at": "2026-03-13T11:25:00Z"
+}

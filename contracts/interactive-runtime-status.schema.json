@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "interactive-runtime-status.schema.json",
+  "title": "InteractiveRuntimeStatus",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "version",
+    "thread_id",
+    "session_id",
+    "status",
+    "label",
+    "detail",
+    "source",
+    "transport_state",
+    "can_send_input",
+    "can_resume_stream",
+    "raw_status",
+    "wait_reason",
+    "reconnect_hint",
+    "observed_at"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "thread_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "active",
+        "waiting",
+        "error",
+        "reconnect"
+      ]
+    },
+    "label": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "boot",
+        "live_notification",
+        "recovered"
+      ]
+    },
+    "transport_state": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "reconnecting",
+        "disconnected"
+      ]
+    },
+    "can_send_input": {
+      "type": "boolean"
+    },
+    "can_resume_stream": {
+      "type": "boolean"
+    },
+    "raw_status": {
+      "$ref": "#/definitions/rawStatus"
+    },
+    "wait_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "approval",
+        "user_input",
+        null
+      ]
+    },
+    "reconnect_hint": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "anyOf": [
+        {
+          "$ref": "#/definitions/reconnectHint"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "observed_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "rawStatus": {
+      "type": "object",
+      "required": [
+        "type",
+        "active_flags"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "notLoaded",
+            "idle",
+            "systemError",
+            "active"
+          ]
+        },
+        "active_flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "waitingOnApproval",
+              "waitingOnUserInput"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reconnectHint": {
+      "type": "object",
+      "required": [
+        "attempt",
+        "reason"
+      ],
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "transport_drop",
+            "page_reload",
+            "resume_after_boot"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
