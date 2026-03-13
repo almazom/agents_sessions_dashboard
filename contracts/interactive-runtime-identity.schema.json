@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "interactive-runtime-identity.schema.json",
+  "title": "InteractiveRuntimeIdentity",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "version",
+    "mappings"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/runtimeIdentityMapping"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "artifactIdentity": {
+      "type": "object",
+      "required": [
+        "harness",
+        "route_id",
+        "session_id",
+        "source_file"
+      ],
+      "properties": {
+        "harness": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "source_file": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeIdentity": {
+      "type": "object",
+      "required": [
+        "thread_id",
+        "session_id",
+        "transport",
+        "source"
+      ],
+      "properties": {
+        "thread_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "codex_app_server",
+            "codex_exec_json",
+            "codex_sdk_ts"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "operational_live",
+            "recovered"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeIdentityMapping": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "runtime"
+      ],
+      "properties": {
+        "artifact": {
+          "$ref": "#/definitions/artifactIdentity"
+        },
+        "runtime": {
+          "$ref": "#/definitions/runtimeIdentity"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
