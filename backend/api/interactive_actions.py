@@ -6,6 +6,8 @@ from typing import Any, Dict
 
 
 INTERRUPT_MODE_VALUES = {"cancel", "interrupt"}
+WAIT_REASON_VALUES = {"approval", "user_input"}
+APPROVAL_RESPONSE_VALUES = {"approve", "reject"}
 
 
 def _require_non_empty_text(value: str, *, label: str) -> str:
@@ -73,6 +75,48 @@ def build_cancel_interrupt_action(
         supervisor_owner_id=supervisor_owner_id,
         payload={
             "mode": normalized_mode,
+            "client_event_id": _require_non_empty_text(
+                client_event_id,
+                label="client_event_id",
+            ),
+        },
+    )
+
+
+def build_waiting_response_action(
+    *,
+    thread_id: str,
+    supervisor_owner_id: str,
+    wait_reason: str,
+    response: str,
+    client_event_id: str,
+) -> Dict[str, Any]:
+    normalized_wait_reason = _require_non_empty_text(
+        wait_reason,
+        label="wait_reason",
+    )
+    if normalized_wait_reason not in WAIT_REASON_VALUES:
+        raise ValueError(
+            "interactive action requires wait_reason to be one of: approval, user_input"
+        )
+
+    normalized_response = _require_non_empty_text(response, label="response")
+    if (
+        normalized_wait_reason == "approval"
+        and normalized_response not in APPROVAL_RESPONSE_VALUES
+    ):
+        raise ValueError(
+            "interactive action requires approval response to be one of: "
+            "approve, reject"
+        )
+
+    return _build_action_envelope(
+        action_type="waiting_response",
+        thread_id=thread_id,
+        supervisor_owner_id=supervisor_owner_id,
+        payload={
+            "wait_reason": normalized_wait_reason,
+            "response": normalized_response,
             "client_event_id": _require_non_empty_text(
                 client_event_id,
                 label="client_event_id",
