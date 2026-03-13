@@ -128,3 +128,43 @@ def normalize_thread_event(event: Dict[str, Any]) -> Dict[str, Any]:
         "payload": payload,
         "source_event_type": event_type,
     }
+
+
+def build_tool_fallback_event(event: Dict[str, Any]) -> Dict[str, Any]:
+    if event.get("kind") != "tool_call":
+        raise ValueError(
+            "interactive tool fallback requires a normalized tool_call event"
+        )
+
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        raise ValueError("interactive tool fallback requires tool payload details")
+
+    tool_name = str(payload.get("tool") or event.get("summary") or "unknown_tool")
+    details = _tool_fallback_details(payload, tool_name=tool_name)
+    return {
+        "event_id": str(event.get("event_id") or ""),
+        "kind": "tool_fallback",
+        "status": str(event.get("status") or "updated"),
+        "summary": f"Tool call: {tool_name}",
+        "payload": {
+            "display_mode": "fallback",
+            "details": details,
+        },
+        "source_event_type": str(event.get("source_event_type") or ""),
+    }
+
+
+def _tool_fallback_details(
+    payload: Dict[str, Any],
+    *,
+    tool_name: str,
+) -> Dict[str, Any]:
+    details = {
+        "server": str(payload.get("server") or ""),
+        "tool": tool_name,
+        "arguments": payload.get("arguments"),
+        "error": payload.get("error"),
+        "result": payload.get("result"),
+    }
+    return details
