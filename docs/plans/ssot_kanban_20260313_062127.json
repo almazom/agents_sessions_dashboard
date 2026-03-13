@@ -193,7 +193,7 @@
       "title": "Собрать fixture Codex artifact",
       "description": "Создать deterministic fixture артефакт с реальным session id, короткой историей user/assistant и стабильными путями.",
       "context": "Это минимальная база для всех последующих interactive проверок.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Дать плану настоящий стартовый артефакт, а не абстрактную ссылку на будущие данные.",
       "estimation": {
         "hours": 4,
@@ -249,12 +249,12 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
           "backend/parsers/codex_parser.py",
@@ -267,6 +267,18 @@
       },
       "artifacts_of_completion": [],
       "history": [
+        {
+          "timestamp": "2026-03-13T08:12:00Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Fixture artifact reproduce checks passed with CSM 100."
+        },
+        {
+          "timestamp": "2026-03-13T08:08:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task commit created; running reproduce checks on committed state."
+        },
         {
           "timestamp": "2026-03-13T08:02:00Z",
           "from_status": "simplification_step",
@@ -305,7 +317,7 @@
       "title": "Собрать fixture identity mapping",
       "description": "Подготовить fixture-слой для связи route identity и runtime identity.",
       "context": "Interactive URL опирается на artifact identity, а continuation живет на runtime identity.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Убрать первую большую architectural gap между detail route и resumable runtime.",
       "estimation": {
         "hours": 3,
@@ -361,8 +373,8 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
@@ -370,11 +382,34 @@
         "total_green_steps": 1,
         "passed_red_steps": 0,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_identity.py",
+          "tests/interactive/fixtures.py",
+          "tests/interactive/test_task_002.py",
+          "tests/fixtures/interactive/codex/runtime_identity.json"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
       "history": [
+        {
+          "timestamp": "2026-03-13T08:20:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Simplification pass finished; ready for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T08:18:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Runtime identity fixture mapping and task tests are green; starting simplification."
+        },
+        {
+          "timestamp": "2026-03-13T08:12:00Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Dependencies resolved after TASK-001; implementation started."
+        },
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "mappings": [
+    {
+      "artifact": {
+        "harness": "codex",
+        "route_id": "rollout-interactive-fixture.jsonl",
+        "session_id": "sess-fixture-codex-001",
+        "source_file": "tests/fixtures/interactive/codex/rollout-interactive-fixture.jsonl"
+      },
+      "runtime": {
+        "thread_id": "thread-fixture-codex-001",
+        "session_id": "sess-fixture-codex-001",
+        "transport": "codex_exec_json",
+        "source": "fixture"
+      }
+    }
+  ]
+}
