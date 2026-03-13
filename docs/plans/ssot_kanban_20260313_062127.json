@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:28:40Z",
+    "last_updated": "2026-03-13T11:34:40Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -2501,7 +2501,7 @@
       "title": "Зафиксировать replay to live handoff",
       "description": "Описать и реализовать правила handoff от replay к live session attach.",
       "context": "Это ключевой seam всей kimi-like модели.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Избежать гонок и двусмысленности при подключении браузера.",
       "estimation": {
         "hours": 3,
@@ -2558,16 +2558,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_handoff.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_019.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2577,6 +2581,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:31:20Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after TASK-018 locked the runtime status contract needed for replay/live attach rules."
+        },
+        {
+          "timestamp": "2026-03-13T11:33:40Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Replay/live handoff helper and green/red task checks passed against the fixture-backed seam."
+        },
+        {
+          "timestamp": "2026-03-13T11:34:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Repeated runtime setup in the handoff test was simplified into one shared helper."
+        },
+        {
+          "timestamp": "2026-03-13T11:34:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Atomic task-019 commit content was prepared after pytest and py_compile checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:34:40Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red replay/live handoff commands passed with CSM 100."
         }
       ],
       "lane": "handoff-status",
