@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:28:40Z",
+    "last_updated": "2026-03-13T11:33:37Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -5155,7 +5155,7 @@
       "title": "Добавить auth and origin rules",
       "description": "Определить токены, origin checks и transport-level security rules для interactive endpoints.",
       "context": "Kimi reference показывает, что web surface без access controls слишком опасен.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Закрыть базовый security контур для interactive страницы.",
       "estimation": {
         "hours": 4,
@@ -5214,9 +5214,9 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
@@ -5230,7 +5230,11 @@
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:c546561",
+        "reproduce_map:/tmp/reproduce_task040_qNX5tv/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task040_qNX5tv/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
@@ -5255,6 +5259,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "TASK-040 simplification review completed without further code changes."
+        },
+        {
+          "timestamp": "2026-03-13T11:29:17Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed TASK-040 as c546561 and advanced to reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-13T11:31:15Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Independent reproduce validation passed with CSM 100."
         }
       ],
       "lane": "security-observability",
@@ -5270,7 +5286,7 @@
       "title": "Добавить resource limits and backpressure",
       "description": "Ввести queue limits, rate guards и overload behavior для interactive runtime.",
       "context": "Без ресурсных ограничений live bridge будет нестабилен при реальной нагрузке.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Сделать runtime предсказуемым под нагрузкой.",
       "estimation": {
         "hours": 4,
@@ -5327,16 +5343,19 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_backpressure.py",
+          "tests/interactive/test_task_041.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -5346,6 +5365,24 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:31:15Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after TASK-040 reached done with same-origin proof and security headers."
+        },
+        {
+          "timestamp": "2026-03-13T11:33:13Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "TASK-041 backpressure helper passed focused green/red tests and preserved runtime control bundle behavior."
+        },
+        {
+          "timestamp": "2026-03-13T11:33:37Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "TASK-041 simplification review completed without further code changes."
         }
       ],
       "lane": "security-observability",
