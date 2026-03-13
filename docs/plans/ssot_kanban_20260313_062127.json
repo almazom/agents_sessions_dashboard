@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T07:06:40Z",
+    "last_updated": "2026-03-13T07:18:20Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -51,6 +51,15 @@
         "TASK-049",
         "TASK-050",
         "TASK-045"
+      ]
+    },
+    "browser_e2e_policy": {
+      "required": true,
+      "rule": "Interactive route считается доказанным только после полного Playwright E2E в реальном браузере с реальной session fixture и published URL.",
+      "required_tasks": [
+        "TASK-051",
+        "TASK-052",
+        "TASK-053"
       ]
     }
   },
@@ -3968,7 +3977,8 @@
         "TASK-041",
         "TASK-042",
         "TASK-049",
-        "TASK-050"
+        "TASK-050",
+        "TASK-052"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4142,7 +4152,7 @@
     {
       "id": "TASK-045",
       "title": "Провести published interactive proof",
-      "description": "Сделать rebuild, republish, Playwright smoke, degraded check и unauthorized check на опубликованном URL.",
+      "description": "Сделать rebuild, republish, Playwright smoke, degraded check и unauthorized check на опубликованном URL после полного published real-browser E2E.",
       "context": "Финальное пользовательское доверие появляется только после published verification.",
       "status": "backlog",
       "meta_intent": "Подтвердить, что interactive route доступен в браузере на живом окружении.",
@@ -4154,7 +4164,8 @@
         "TASK-005",
         "TASK-043",
         "TASK-044",
-        "TASK-050"
+        "TASK-050",
+        "TASK-053"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4721,6 +4732,294 @@
         "codex",
         "verification",
         "reproduce-gate",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-051",
+      "title": "Подготовить real session browser E2E fixture",
+      "description": "Собрать реальную session fixture для browser E2E: стабильный artifact route, resumable runtime identity, seeded tail snapshot и published-safe test setup.",
+      "context": "Полный browser E2E не должен опираться на synthetic fake session. Нужна fixture, максимально близкая к реальной Codex continuation.",
+      "status": "backlog",
+      "meta_intent": "Дать Playwright E2E честный вход через реальную session shape вместо искусственной заглушки.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-005",
+        "TASK-015",
+        "TASK-020",
+        "TASK-050"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Browser E2E использует real session fixture, а не synthetic mock thread",
+        "Fixture годится и для local, и для published Playwright прогонов"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given route, replay и runtime layers уже собраны, When подготавливается real session browser E2E fixture, Then Playwright получает реальный session entrypoint с честным tail и resumable identity.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Подготовить real session browser E2E fixture",
+                "command": "python3 -m pytest tests/interactive/test_task_051.py -k real_session_fixture",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given fixture identity или published-safe setup сломаны, When подготавливается real session browser E2E fixture, Then система падает честно и не запускает ложный browser E2E.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Подготовить real session browser E2E fixture",
+                "command": "python3 -m pytest tests/interactive/test_task_051.py -k broken_real_session_fixture",
+                "expected_output": "real session fixture failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:18:20Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added explicit real-session browser E2E fixture task."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "browser-e2e",
+        "real-session",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-052",
+      "title": "Провести local Playwright real browser E2E",
+      "description": "Запустить полный Playwright E2E в реальном браузере на локальном interactive route с real session fixture: open route, replay tail, live attach, prompt submit и reconnect.",
+      "context": "Integration tests и local proof пока не гарантируют, что реальный браузер проходит весь пользовательский путь.",
+      "status": "backlog",
+      "meta_intent": "Подтвердить, что локальный пользователь действительно может пройти весь browser continuation flow на реальной сессии.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-051",
+        "TASK-038",
+        "TASK-050"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Playwright проходит полный local browser path на реальной session fixture",
+        "E2E покрывает replay, live attach, composer submit и reconnect"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given локальный interactive stack и real session fixture готовы, When запускается local Playwright real browser E2E, Then браузер проходит полный user flow без скрытых test-only shortcuts.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести local Playwright real browser E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_052.py -k local_real_browser_e2e",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given real browser flow ломается на replay, attach или submit, When запускается local Playwright real browser E2E, Then тест падает честно с наблюдаемой browser-level причиной.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести local Playwright real browser E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_052.py -k local_real_browser_e2e_broken",
+                "expected_output": "browser e2e failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:18:20Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added explicit local real-browser Playwright E2E task."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "browser-e2e",
+        "real-session",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-053",
+      "title": "Провести published Playwright real browser E2E",
+      "description": "Запустить полный Playwright E2E в реальном браузере против опубликованного interactive URL с real session fixture: open route, replay tail, live attach, prompt submit, reconnect и visible browser proof.",
+      "context": "Published smoke сам по себе еще не доказывает, что пользователь реально пройдет весь browser continuation path на живом URL.",
+      "status": "backlog",
+      "meta_intent": "Подтвердить на опубликованном URL не только доступность страницы, но и настоящий user-visible continuation flow.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-051",
+        "TASK-052",
+        "TASK-044",
+        "TASK-050"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Published Playwright проходит полный real-browser path на живом URL",
+        "Есть browser-level proof для real session route, а не только smoke/unauthorized checks"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given published interactive route и real session fixture готовы, When запускается published Playwright real browser E2E, Then браузер проходит полный continuation flow на живом URL.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести published Playwright real browser E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_053.py -k published_real_browser_e2e",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given живой browser flow ломается после deploy или не может attach к real session, When запускается published Playwright real browser E2E, Then тест падает честно и фиксирует browser-visible failure.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести published Playwright real browser E2E",
+                "command": "python3 -m pytest tests/interactive/test_task_053.py -k published_real_browser_e2e_broken",
+                "expected_output": "published browser e2e failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:18:20Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Added explicit published real-browser Playwright E2E task."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "playwright",
+        "browser-e2e",
+        "real-session",
+        "published",
         "size:M"
       ]
     }
