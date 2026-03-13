@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:02:35Z",
+    "last_updated": "2026-03-13T11:07:50Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -1975,7 +1975,7 @@
       "title": "Собрать tail snapshot extraction",
       "description": "Достать последние сообщения, summary hints и ключевые identity hints из source artifact.",
       "context": "Interactive страница не должна открываться в пустоту.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Показать пользователю честный хвост прошлой сессии до live continuation.",
       "estimation": {
         "hours": 4,
@@ -2033,16 +2033,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/sdk_sidecar_probe.py",
+          "tests/interactive/test_task_054.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -5727,6 +5731,36 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Added explicit Codex SDK sidecar evaluation task after SDK investigation."
+        },
+        {
+          "timestamp": "2026-03-13T11:03:30Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the Codex SDK sidecar spike after the fixture milestone gate was proven."
+        },
+        {
+          "timestamp": "2026-03-13T11:05:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "SDK sidecar probe helper and green/red probe checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:06:30Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "SDK sidecar verdict layer was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T11:07:17Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as 64e2b5a and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T11:07:50Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red SDK sidecar probe commands passed with CSM 100."
         }
       ],
       "lane": "transport",
