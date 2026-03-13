@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:33:37Z",
+    "last_updated": "2026-03-13T11:38:12Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -5286,7 +5286,7 @@
       "title": "Добавить resource limits and backpressure",
       "description": "Ввести queue limits, rate guards и overload behavior для interactive runtime.",
       "context": "Без ресурсных ограничений live bridge будет нестабилен при реальной нагрузке.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Сделать runtime предсказуемым под нагрузкой.",
       "estimation": {
         "hours": 4,
@@ -5345,9 +5345,9 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
@@ -5358,7 +5358,11 @@
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:674a539",
+        "reproduce_map:/tmp/reproduce_task041_CrnVgj/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task041_CrnVgj/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
@@ -5383,6 +5387,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "TASK-041 simplification review completed without further code changes."
+        },
+        {
+          "timestamp": "2026-03-13T11:34:15Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed TASK-041 as 674a539 and advanced to reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-13T11:36:05Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Independent reproduce validation passed with CSM 100."
         }
       ],
       "lane": "security-observability",
@@ -5398,7 +5414,7 @@
       "title": "Добавить lifecycle observability",
       "description": "Собрать structured logs, counters и failure notes для lifecycle переходов interactive runtime.",
       "context": "Без observability published proof и support будут слабыми.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Сделать поведение runtime наблюдаемым и отлаживаемым.",
       "estimation": {
         "hours": 3,
@@ -5455,16 +5471,19 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_observability.py",
+          "tests/interactive/test_task_042.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -5474,6 +5493,24 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T11:36:05Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after TASK-041 reached done with queue, rate, and overload proof."
+        },
+        {
+          "timestamp": "2026-03-13T11:37:41Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "TASK-042 lifecycle observability helper passed focused green/red tests."
+        },
+        {
+          "timestamp": "2026-03-13T11:38:12Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "TASK-042 simplification review completed without further code changes."
         }
       ],
       "lane": "security-observability",
