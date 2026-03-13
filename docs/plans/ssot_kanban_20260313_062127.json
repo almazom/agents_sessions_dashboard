@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:38:12Z",
+    "last_updated": "2026-03-13T11:43:45Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -5414,7 +5414,7 @@
       "title": "Добавить lifecycle observability",
       "description": "Собрать structured logs, counters и failure notes для lifecycle переходов interactive runtime.",
       "context": "Без observability published proof и support будут слабыми.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Сделать поведение runtime наблюдаемым и отлаживаемым.",
       "estimation": {
         "hours": 3,
@@ -5473,9 +5473,9 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
@@ -5486,7 +5486,11 @@
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:c23414a",
+        "reproduce_map:/tmp/reproduce_task042_Vj05ba/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task042_Vj05ba/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
@@ -5511,6 +5515,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "TASK-042 simplification review completed without further code changes."
+        },
+        {
+          "timestamp": "2026-03-13T11:38:47Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed TASK-042 as c23414a and advanced to reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-13T11:40:33Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Independent reproduce validation passed with CSM 100."
         }
       ],
       "lane": "security-observability",
@@ -5526,7 +5542,7 @@
       "title": "Провести local happy path proof",
       "description": "Подтвердить локально replay, live attach, submit и reconnect happy path.",
       "context": "Local proof нужен до любого published deploy.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Доказать, что основной сценарий работает в контролируемой среде.",
       "estimation": {
         "hours": 4,
@@ -5589,16 +5605,19 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/route_security_bundle.py",
+          "tests/interactive/test_task_050.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -5623,7 +5642,7 @@
       "title": "Провести local failure and immutability proof",
       "description": "Подтвердить busy, init-error, unauthorized и artifact immutability сценарии.",
       "context": "Нужен отдельный локальный proof для failure-веток и неизменности source artifact.",
-      "status": "backlog",
+      "status": "auto_commit_step",
       "meta_intent": "Закрыть локальные риски до публикации.",
       "estimation": {
         "hours": 4,
@@ -5682,16 +5701,19 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
+        "tdd_passed": true,
+        "simplified": true,
         "committed": false,
         "reproduce_attempts": 0,
         "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/route_security_bundle.py",
+          "tests/interactive/test_task_050.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -6424,6 +6446,24 @@
           "from_status": null,
           "to_status": "backlog",
           "note": "Major-step reproduce gate added to SSOT."
+        },
+        {
+          "timestamp": "2026-03-13T11:41:59Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated after route, ownership, origin, backpressure, and lifecycle observability cards all reached done."
+        },
+        {
+          "timestamp": "2026-03-13T11:43:12Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "TASK-050 route/security bundle passed focused green/red tests and the full route-security dependency slice."
+        },
+        {
+          "timestamp": "2026-03-13T11:43:45Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "TASK-050 simplification review completed without further code changes."
         }
       ],
       "lane": "verification",
