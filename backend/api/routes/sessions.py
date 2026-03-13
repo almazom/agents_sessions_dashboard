@@ -17,6 +17,10 @@ from backend.api.interactive_boot import (
     InteractiveBootPayloadUnavailable,
     build_interactive_boot_payload,
 )
+from backend.api.interactive_ownership import (
+    enforce_interactive_session_ownership,
+    resolve_interactive_actor_id,
+)
 from backend.api.scanner import session_store, session_scanner
 from backend.api.session_artifacts import (
     attach_session_route,
@@ -25,7 +29,7 @@ from backend.api.session_artifacts import (
     resolve_session_file_fallback,
     resolve_session_file_from_store,
 )
-from ..deps import get_current_user
+from ..deps import User, get_current_user
 from ..settings import settings
 
 logger = get_logger("agent_nexus.sessions")
@@ -116,8 +120,18 @@ def _resolve_session_artifact(harness: str, artifact_id: str) -> Dict[str, Any]:
     return build_session_detail_payload(session_payload, file_path)
 
 
-def _resolve_interactive_artifact_boot(harness: str, artifact_id: str) -> Dict[str, Any]:
+def _resolve_interactive_artifact_boot(
+    harness: str,
+    artifact_id: str,
+    *,
+    actor_id: str | None = None,
+) -> Dict[str, Any]:
     session, file_path = _resolve_session_artifact_source(harness, artifact_id)
+    if actor_id is not None:
+        try:
+            enforce_interactive_session_ownership(session, actor_id=actor_id)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     try:
         return build_interactive_boot_payload(dict(session), file_path)
@@ -483,12 +497,15 @@ async def get_session_artifact_interactive_boot(
     harness: str,
     artifact_id: str,
     request: Request,
+    user: User = Depends(get_current_user),
 ):
     """Return the initial backend boot payload for the dedicated interactive route."""
+    actor_id = resolve_interactive_actor_id(user)
     payload = await run_in_threadpool(
         _resolve_interactive_artifact_boot,
         harness,
         artifact_id,
+        actor_id=actor_id,
     )
     log_event(
         logger,
@@ -498,6 +515,7 @@ async def get_session_artifact_interactive_boot(
         harness=harness,
         artifact_id=artifact_id,
         session_id=(payload.get("session") or {}).get("session_id"),
+        actor_id=actor_id,
         transport=(payload.get("interactive_session") or {}).get("transport"),
     )
     return payload
