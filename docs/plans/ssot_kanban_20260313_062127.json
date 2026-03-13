@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T13:26:40Z",
+    "last_updated": "2026-03-13T13:31:55Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -3978,7 +3978,7 @@
       "title": "Реализовать cancel interrupt action",
       "description": "Поддержать cancel или interrupt action из browser UI.",
       "context": "Пользователю нужен хотя бы один control action кроме submit.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать interactive continuation управляемым в ходе выполнения.",
       "estimation": {
         "hours": 3,
@@ -4035,25 +4035,62 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "backend/api/interactive_actions.py",
+          "tests/interactive/test_task_031.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "python3 -m pytest tests/interactive/test_task_031.py -k green",
+        "python3 -m pytest tests/interactive/test_task_031.py -k red"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-13T13:29:40Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Started the second browser control action as a shared cancel-or-interrupt envelope for the live bridge."
+        },
+        {
+          "timestamp": "2026-03-13T13:31:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Extracted a small shared action-envelope helper while adding cancel and interrupt mode coverage."
+        },
+        {
+          "timestamp": "2026-03-13T13:31:20Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "The builder stayed explicit with only two allowed modes and no extra control-action abstraction."
+        },
+        {
+          "timestamp": "2026-03-13T13:31:40Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Green and red cancel-interrupt checks passed through the declared python3 -m pytest commands."
+        },
+        {
+          "timestamp": "2026-03-13T13:31:55Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Cancel-interrupt browser action reached CSM 100 with explicit mode validation."
         }
       ],
       "lane": "control-actions",
