@@ -8,6 +8,11 @@ from typing import Any, Dict
 INTERRUPT_MODE_VALUES = {"cancel", "interrupt"}
 WAIT_REASON_VALUES = {"approval", "user_input"}
 APPROVAL_RESPONSE_VALUES = {"approve", "reject"}
+ACTION_TYPE_VALUES = {
+    "prompt_submit",
+    "cancel_interrupt",
+    "waiting_response",
+}
 
 
 def _require_non_empty_text(value: str, *, label: str) -> str:
@@ -33,6 +38,13 @@ def _build_action_envelope(
         ),
         "payload": payload,
     }
+
+
+def _require_payload_dict(action: Dict[str, Any]) -> Dict[str, Any]:
+    payload = action.get("payload")
+    if not isinstance(payload, dict):
+        raise ValueError("interactive action requires payload object")
+    return payload
 
 
 def build_prompt_submit_action(
@@ -122,4 +134,78 @@ def build_waiting_response_action(
                 label="client_event_id",
             ),
         },
+    )
+
+
+def validate_inbound_action(
+    *,
+    action: Dict[str, Any],
+    authenticated_actor_id: str,
+    expected_thread_id: str,
+    expected_supervisor_owner_id: str,
+) -> Dict[str, Any]:
+    if not isinstance(action, dict):
+        raise ValueError("interactive action validation requires action object")
+
+    actor_id = _require_non_empty_text(
+        authenticated_actor_id,
+        label="authenticated_actor_id",
+    )
+    thread_id = _require_non_empty_text(
+        expected_thread_id,
+        label="expected_thread_id",
+    )
+    owner_id = _require_non_empty_text(
+        expected_supervisor_owner_id,
+        label="expected_supervisor_owner_id",
+    )
+
+    if actor_id != owner_id:
+        raise PermissionError("interactive action actor is not allowed to control owner")
+
+    action_type = _require_non_empty_text(
+        str(action.get("action_type", "")),
+        label="action_type",
+    )
+    if action_type not in ACTION_TYPE_VALUES:
+        raise ValueError(f"interactive action does not support type: {action_type}")
+
+    action_thread_id = _require_non_empty_text(
+        str(action.get("thread_id", "")),
+        label="thread_id",
+    )
+    if action_thread_id != thread_id:
+        raise PermissionError("interactive action thread does not match active session")
+
+    action_owner_id = _require_non_empty_text(
+        str(action.get("supervisor_owner_id", "")),
+        label="supervisor_owner_id",
+    )
+    if action_owner_id != owner_id:
+        raise PermissionError("interactive action owner does not match active supervisor")
+
+    payload = _require_payload_dict(action)
+
+    if action_type == "prompt_submit":
+        return build_prompt_submit_action(
+            thread_id=action_thread_id,
+            supervisor_owner_id=action_owner_id,
+            text=str(payload.get("text", "")),
+            client_event_id=str(payload.get("client_event_id", "")),
+        )
+
+    if action_type == "cancel_interrupt":
+        return build_cancel_interrupt_action(
+            thread_id=action_thread_id,
+            supervisor_owner_id=action_owner_id,
+            mode=str(payload.get("mode", "")),
+            client_event_id=str(payload.get("client_event_id", "")),
+        )
+
+    return build_waiting_response_action(
+        thread_id=action_thread_id,
+        supervisor_owner_id=action_owner_id,
+        wait_reason=str(payload.get("wait_reason", "")),
+        response=str(payload.get("response", "")),
+        client_event_id=str(payload.get("client_event_id", "")),
     )
