@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:10:55Z",
+    "last_updated": "2026-03-13T11:15:30Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -225,7 +225,7 @@
       "title": "Собрать fixture Codex artifact",
       "description": "Создать deterministic fixture артефакт с реальным session id, короткой историей user/assistant и стабильными путями.",
       "context": "Это минимальная база для всех последующих interactive проверок.",
-      "status": "in_progress",
+      "status": "done",
       "meta_intent": "Дать плану настоящий стартовый артефакт, а не абстрактную ссылку на будущие данные.",
       "estimation": {
         "hours": 4,
@@ -2033,16 +2033,20 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_tail.py",
+          "docs/plans/ssot_kanban_20260313_062127.json",
+          "tests/interactive/test_task_015.py"
+        ],
         "last_failure_note": null
       },
       "artifacts_of_completion": [],
@@ -2076,6 +2080,30 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Activated as the next real implementation card after TASK-047 was proven."
+        },
+        {
+          "timestamp": "2026-03-13T11:13:30Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Tail snapshot extraction helper and green/red task checks passed."
+        },
+        {
+          "timestamp": "2026-03-13T11:14:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Tail snapshot extraction helper was simplified and prepared for atomic commit."
+        },
+        {
+          "timestamp": "2026-03-13T11:14:45Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed as cc7990e and moved into board-mandated reproduction."
+        },
+        {
+          "timestamp": "2026-03-13T11:15:15Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Green and red tail snapshot commands passed with CSM 100."
         }
       ],
       "lane": "replay",
@@ -2091,7 +2119,7 @@
       "title": "Собрать replay event snapshot",
       "description": "Нормализовать replay-снимок событий для browser delivery до live attach.",
       "context": "Текстовый tail полезен, но нужен еще event-level replay.",
-      "status": "backlog",
+      "status": "in_progress",
       "meta_intent": "Подготовить основание для воспроизведения истории в браузере.",
       "estimation": {
         "hours": 4,
@@ -2172,6 +2200,12 @@
           "from_status": "done",
           "to_status": "backlog",
           "note": "Rolled back a false done state because no TASK-016 test or implementation artifacts exist in the repo."
+        },
+        {
+          "timestamp": "2026-03-13T11:15:30Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated as the next replay implementation card after TASK-015 was delivered."
         }
       ],
       "lane": "replay",
