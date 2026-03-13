@@ -14,6 +14,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from backend.parsers import PARSER_REGISTRY
 from backend.parsers.base import SessionSummary
 
+from .interactive_identity import (
+    InteractiveIdentityMismatch,
+    InteractiveIdentityNotFound,
+    InteractiveIdentityStale,
+    resolve_runtime_identity_from_artifact_route,
+)
 from .scanner import SessionScanner
 
 DEFAULT_TIMEZONE = "Europe/Moscow"
@@ -165,6 +171,10 @@ EVIDENCE_LAYER_ORDER = [
     "files modified",
     "git commits",
 ]
+
+INTERACTIVE_TRANSPORT_BY_HARNESS = {
+    "codex": "codex_app_server",
+}
 
 
 def resolve_timezone(name: str) -> Tuple[ZoneInfo, str]:
@@ -589,6 +599,7 @@ def build_topic_threads(
 def build_session_state_model(
     session: Dict[str, Any],
     computed_activity_state: str,
+    interactive_session: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     status = str(session.get("status") or "").strip().lower()
     query_enabled = bool(session.get("query_enabled"))
@@ -650,7 +661,81 @@ def build_session_state_model(
             "can_resume": resume_supported,
             "can_restore": resume_supported,
         },
+        "interactive_session": interactive_session,
     }
+
+
+def build_interactive_session_capability(
+    session: Dict[str, Any],
+    route: Dict[str, str],
+) -> Dict[str, Any]:
+    def capability_response(
+        *,
+        available: bool,
+        label: str,
+        detail: str,
+        href: Optional[str],
+        transport: Optional[str],
+    ) -> Dict[str, Any]:
+        return {
+            "available": available,
+            "label": label,
+            "detail": detail,
+            "href": href,
+            "transport": transport,
+        }
+
+    harness = str(session.get("agent_type") or session.get("provider") or "").strip()
+    session_id = str(session.get("session_id") or "").strip()
+    interactive_transport = INTERACTIVE_TRANSPORT_BY_HARNESS.get(harness)
+
+    if not interactive_transport:
+        return capability_response(
+            available=False,
+            label="Interactive mode not supported",
+            detail="Interactive browser continuation is not supported for this harness yet.",
+            href=None,
+            transport=None,
+        )
+
+    interactive_href = f"{route['href']}/interactive"
+    if not bool(session.get("resume_supported")):
+        return capability_response(
+            available=False,
+            label="Interactive mode not enabled",
+            detail="Interactive continuation stays disabled until resume support is explicitly enabled.",
+            href=interactive_href,
+            transport=interactive_transport,
+        )
+
+    try:
+        resolve_runtime_identity_from_artifact_route(
+            harness=harness,
+            artifact_route_id=route["id"],
+            artifact_session_id=session_id,
+        )
+    except InteractiveIdentityNotFound:
+        detail = "Interactive continuation is disabled because no runtime identity mapping was found."
+    except InteractiveIdentityStale:
+        detail = "Interactive continuation is disabled because the runtime identity is stale."
+    except InteractiveIdentityMismatch:
+        detail = "Interactive continuation is disabled because the runtime identity does not match this route."
+    else:
+        return capability_response(
+            available=True,
+            label="Interactive mode available",
+            detail="Open the dedicated route to continue this Codex session through the backend interactive flow.",
+            href=interactive_href,
+            transport=interactive_transport,
+        )
+
+    return capability_response(
+        available=False,
+        label="Interactive mode blocked",
+        detail=detail,
+        href=interactive_href,
+        transport=interactive_transport,
+    )
 
 
 def build_evidence_sparsity(
@@ -855,7 +940,8 @@ def build_session_detail_payload(
         git_commits=git_context.get("commits") or [],
         tool_calls=session.get("tool_calls") or [],
     )
-    state_model = build_session_state_model(session, computed_activity_state)
+    interactive_session = build_interactive_session_capability(session, route)
+    state_model = build_session_state_model(session, computed_activity_state, interactive_session=interactive_session)
     evidence_sparsity = build_evidence_sparsity(
         user_messages=user_messages,
         timeline=timeline,

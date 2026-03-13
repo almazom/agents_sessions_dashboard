@@ -162,6 +162,11 @@ export interface SessionStateCapability {
   detail: string;
 }
 
+export interface SessionInteractiveCapability extends SessionStateCapability {
+  href?: string | null;
+  transport?: string | null;
+}
+
 export interface SessionStateCapabilities {
   can_ask: boolean;
   can_resume: boolean;
@@ -174,6 +179,7 @@ export interface SessionStateModel {
   summary: string;
   rationale: string[];
   capabilities?: SessionStateCapabilities;
+  interactive_session?: SessionInteractiveCapability;
   ask_session?: SessionStateCapability;
   resume_session?: SessionStateCapability;
 }
