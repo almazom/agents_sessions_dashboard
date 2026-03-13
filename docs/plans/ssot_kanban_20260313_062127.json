@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T06:57:10Z",
+    "last_updated": "2026-03-13T07:06:40Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -40,7 +40,19 @@
       "frontend-route",
       "security-observability",
       "verification"
-    ]
+    ],
+    "major_step_reproduction_policy": {
+      "required": true,
+      "rule": "Каждый крупный этап должен завершаться отдельной reproduce-card до открытия следующего крупного этапа.",
+      "major_step_gates": [
+        "TASK-046",
+        "TASK-047",
+        "TASK-048",
+        "TASK-049",
+        "TASK-050",
+        "TASK-045"
+      ]
+    }
   },
   "workflow_triggers": {
     "simplification_step": {
@@ -576,7 +588,8 @@
         "story_points": 2
       },
       "dependencies": [
-        "TASK-001"
+        "TASK-001",
+        "TASK-046"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -667,7 +680,8 @@
       },
       "dependencies": [
         "TASK-004",
-        "TASK-006"
+        "TASK-006",
+        "TASK-046"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -757,7 +771,8 @@
         "story_points": 2
       },
       "dependencies": [
-        "TASK-007"
+        "TASK-007",
+        "TASK-046"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -1391,7 +1406,8 @@
       },
       "dependencies": [
         "TASK-001",
-        "TASK-010"
+        "TASK-010",
+        "TASK-047"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -1661,7 +1677,8 @@
         "story_points": 2
       },
       "dependencies": [
-        "TASK-013"
+        "TASK-013",
+        "TASK-047"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -1933,7 +1950,8 @@
       },
       "dependencies": [
         "TASK-010",
-        "TASK-018"
+        "TASK-018",
+        "TASK-047"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -2204,7 +2222,8 @@
       },
       "dependencies": [
         "TASK-008",
-        "TASK-021"
+        "TASK-021",
+        "TASK-048"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -2476,7 +2495,8 @@
       },
       "dependencies": [
         "TASK-019",
-        "TASK-025"
+        "TASK-025",
+        "TASK-048"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -2749,7 +2769,8 @@
       "dependencies": [
         "TASK-013",
         "TASK-025",
-        "TASK-027"
+        "TASK-027",
+        "TASK-048"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -3115,7 +3136,9 @@
       "dependencies": [
         "TASK-014",
         "TASK-020",
-        "TASK-029"
+        "TASK-029",
+        "TASK-048",
+        "TASK-049"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -3575,7 +3598,8 @@
       },
       "dependencies": [
         "TASK-024",
-        "TASK-034"
+        "TASK-034",
+        "TASK-049"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -3942,7 +3966,9 @@
         "TASK-039",
         "TASK-040",
         "TASK-041",
-        "TASK-042"
+        "TASK-042",
+        "TASK-049",
+        "TASK-050"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4034,7 +4060,8 @@
       "dependencies": [
         "TASK-003",
         "TASK-033",
-        "TASK-043"
+        "TASK-043",
+        "TASK-050"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4126,7 +4153,8 @@
       "dependencies": [
         "TASK-005",
         "TASK-043",
-        "TASK-044"
+        "TASK-044",
+        "TASK-050"
       ],
       "definition_of_done": [
         "Code is written (TDD approach)",
@@ -4201,6 +4229,498 @@
         "interactive",
         "codex",
         "verification",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-046",
+      "title": "Провести fixture milestone reproduction",
+      "description": "Проверить, что fixture, identity fixture, hash helper, backend harness и Playwright skeleton воспроизводятся как единый базовый этап.",
+      "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
+      "status": "backlog",
+      "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003",
+        "TASK-004",
+        "TASK-005"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Reproduce-команда проходит на major-step bundle",
+        "Failure path доказывает честную деградацию или clear failure mode"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given все задачи текущего major step выполнены, When запускается провести fixture milestone reproduction, Then bundle воспроизводится и подтверждает готовность этапа.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести fixture milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_046.py -k fixtures_bundle",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given major step частично сломан или неполон, When запускается провести fixture milestone reproduction, Then reproduce-gate падает честно и показывает незакрытый риск.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести fixture milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_046.py -k fixtures_bundle_broken",
+                "expected_output": "fixtures bundle failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:06:40Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Major-step reproduce gate added to SSOT."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "reproduce-gate",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-047",
+      "title": "Провести transport and boot milestone reproduction",
+      "description": "Проверить bundle из transport matrix, probe, ADR, runtime identity и boot payload слоя.",
+      "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
+      "status": "backlog",
+      "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-009",
+        "TASK-010",
+        "TASK-011",
+        "TASK-012",
+        "TASK-013",
+        "TASK-014"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Reproduce-команда проходит на major-step bundle",
+        "Failure path доказывает честную деградацию или clear failure mode"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given все задачи текущего major step выполнены, When запускается провести transport and boot milestone reproduction, Then bundle воспроизводится и подтверждает готовность этапа.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести transport and boot milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_047.py -k transport_identity_boot",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given major step частично сломан или неполон, When запускается провести transport and boot milestone reproduction, Then reproduce-gate падает честно и показывает незакрытый риск.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести transport and boot milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_047.py -k transport_identity_boot_broken",
+                "expected_output": "transport bundle failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:06:40Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Major-step reproduce gate added to SSOT."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "reproduce-gate",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-048",
+      "title": "Провести replay and store milestone reproduction",
+      "description": "Проверить bundle из tail snapshot, replay snapshot, handoff/status и operational store.",
+      "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
+      "status": "backlog",
+      "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-015",
+        "TASK-016",
+        "TASK-017",
+        "TASK-018",
+        "TASK-019",
+        "TASK-020",
+        "TASK-021",
+        "TASK-022",
+        "TASK-023"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Reproduce-команда проходит на major-step bundle",
+        "Failure path доказывает честную деградацию или clear failure mode"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given все задачи текущего major step выполнены, When запускается провести replay and store milestone reproduction, Then bundle воспроизводится и подтверждает готовность этапа.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести replay and store milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_048.py -k replay_store_bundle",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given major step частично сломан или неполон, When запускается провести replay and store milestone reproduction, Then reproduce-gate падает честно и показывает незакрытый риск.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести replay and store milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_048.py -k replay_store_bundle_broken",
+                "expected_output": "replay bundle failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:06:40Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Major-step reproduce gate added to SSOT."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "reproduce-gate",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-049",
+      "title": "Провести supervisor and control milestone reproduction",
+      "description": "Проверить bundle из ownership locks, supervisor lifecycle, event normalization и inbound control actions.",
+      "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
+      "status": "backlog",
+      "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-024",
+        "TASK-025",
+        "TASK-026",
+        "TASK-027",
+        "TASK-028",
+        "TASK-029",
+        "TASK-030",
+        "TASK-031",
+        "TASK-032",
+        "TASK-033"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Reproduce-команда проходит на major-step bundle",
+        "Failure path доказывает честную деградацию или clear failure mode"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given все задачи текущего major step выполнены, When запускается провести supervisor and control milestone reproduction, Then bundle воспроизводится и подтверждает готовность этапа.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести supervisor and control milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_049.py -k runtime_control_bundle",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given major step частично сломан или неполон, When запускается провести supervisor and control milestone reproduction, Then reproduce-gate падает честно и показывает незакрытый риск.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести supervisor and control milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_049.py -k runtime_control_bundle_broken",
+                "expected_output": "runtime control bundle failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:06:40Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Major-step reproduce gate added to SSOT."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "reproduce-gate",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-050",
+      "title": "Провести route and security milestone reproduction",
+      "description": "Проверить bundle из interactive route loader, page shell, frontend state machine, integration tests и security/observability слоя.",
+      "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
+      "status": "backlog",
+      "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-034",
+        "TASK-035",
+        "TASK-036",
+        "TASK-037",
+        "TASK-038",
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-042"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Reproduce-команда проходит на major-step bundle",
+        "Failure path доказывает честную деградацию или clear failure mode"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given все задачи текущего major step выполнены, When запускается провести route and security milestone reproduction, Then bundle воспроизводится и подтверждает готовность этапа.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести route and security milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_050.py -k route_security_bundle",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given major step частично сломан или неполон, When запускается провести route and security milestone reproduction, Then reproduce-gate падает честно и показывает незакрытый риск.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести route and security milestone reproduction",
+                "command": "python3 -m pytest tests/interactive/test_task_050.py -k route_security_bundle_broken",
+                "expected_output": "route security bundle failed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T07:06:40Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Major-step reproduce gate added to SSOT."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "reproduce-gate",
         "size:M"
       ]
     }
