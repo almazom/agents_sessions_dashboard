@@ -57,18 +57,18 @@ class CodexParser(SessionParser):
                         git_info = payload.get("git", {})
                         git_branch = git_info.get("branch")
 
-                    # Extract user message (intent)
+                    # Extract response items
                     elif event_type == "response_item":
-                        if payload.get("type") == "message" and payload.get("role") == "user":
+                        payload_type = payload.get("type")
+
+                        if payload_type == "message" and payload.get("role") == "user":
                             content = payload.get("content", [])
                             for item in content:
                                 if item.get("type") == "input_text":
                                     text = item.get("text", "")
                                     self.collect_user_message(user_messages, text)
 
-                    # Extract function calls (tool usage)
-                    elif event_type == "response_item":
-                        if payload.get("type") == "function_call":
+                        elif payload_type == "function_call":
                             func_name = payload.get("name", "")
                             if func_name:
                                 tool_calls.append(func_name)
@@ -85,13 +85,27 @@ class CodexParser(SessionParser):
                                     # Extract file from patch
                                     patch_content = args.get("command", [""])[0] if args.get("command") else ""
                                     if "*** Update File:" in patch_content:
-                                        file_path_match = patch_content.split("*** Update File:")[1].split("\\")[0].strip()
+                                        file_path_match = patch_content.split("*** Update File:", 1)[1].splitlines()[0].strip()
                                         if file_path_match:
                                             files_modified.append(file_path_match)
 
+                                if func_name == "update_plan":
+                                    try:
+                                        args = json.loads(payload.get("arguments", "{}"))
+                                        plan = args.get("plan", [])
+                                        for step in plan:
+                                            plan_steps.append({
+                                                "step": step.get("step", ""),
+                                                "status": step.get("status", "pending")
+                                            })
+                                    except Exception:
+                                        pass
+
                     # Extract token counts
                     elif event_type == "event_msg":
-                        if payload.get("type") == "token_count":
+                        payload_type = payload.get("type")
+
+                        if payload_type == "token_count":
                             info = payload.get("info") or {}
                             usage = info.get("total_token_usage") or {}
                             token_usage["input_tokens"] = usage.get("input_tokens", 0)
@@ -99,27 +113,11 @@ class CodexParser(SessionParser):
                             token_usage["total_tokens"] = usage.get("total_tokens", 0)
 
                         # Track user messages too
-                        elif payload.get("type") == "user_message":
+                        elif payload_type == "user_message":
                             msg = payload.get("message", "")
                             self.collect_user_message(user_messages, msg)
 
-                    # Extract plan updates
-                    elif event_type == "response_item":
-                        if payload.get("type") == "function_call" and payload.get("name") == "update_plan":
-                            try:
-                                args = json.loads(payload.get("arguments", "{}"))
-                                plan = args.get("plan", [])
-                                for step in plan:
-                                    plan_steps.append({
-                                        "step": step.get("step", ""),
-                                        "status": step.get("status", "pending")
-                                    })
-                            except Exception:
-                                pass
-
-                    # Detect completion
-                    elif event_type == "event_msg":
-                        if payload.get("type") == "task_complete":
+                        elif payload_type == "task_complete":
                             events.append({
                                 "type": "task_complete",
                                 "timestamp": timestamp,
