@@ -19,7 +19,28 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T06:38:20Z"
+    "last_updated": "2026-03-13T06:57:10Z",
+    "planning_constraints": {
+      "board_style": "trello-like",
+      "max_task_hours": 4,
+      "max_story_points": 4,
+      "sizing_rule": "Каждая карточка должна помещаться в один короткий автономный implementation loop."
+    },
+    "board_lanes": [
+      "fixtures",
+      "transport",
+      "identity",
+      "boot-payload",
+      "replay",
+      "handoff-status",
+      "operational-store",
+      "supervisor",
+      "event-stream",
+      "control-actions",
+      "frontend-route",
+      "security-observability",
+      "verification"
+    ]
   },
   "workflow_triggers": {
     "simplification_step": {
@@ -96,43 +117,41 @@
   },
   "tasks": [
     {
-      "id": "TASK-000",
-      "title": "Создать deterministic fixture и verification harness",
-      "description": "Подготовить воспроизводимый базис для всего interactive направления: fixture Codex artifact, fixture identity mapping, transport probe skeleton, artifact hash helper, backend test harness и frontend Playwright skeleton.",
-      "context": "Коллективный review показал, что без fixture/bootstrap план остаётся roadmap, а не автономным SSOT. Почти все поздние green/red paths сейчас опираются на файлы и тесты, которых ещё нет.",
+      "id": "TASK-001",
+      "title": "Собрать fixture Codex artifact",
+      "description": "Создать deterministic fixture артефакт с реальным session id, короткой историей user/assistant и стабильными путями.",
+      "context": "Это минимальная база для всех последующих interactive проверок.",
       "status": "ready_for_dev",
-      "meta_intent": "Сделать все последующие задачи реально воспроизводимыми без скрытого ambient state и без ручного угадывания.",
+      "meta_intent": "Дать плану настоящий стартовый артефакт, а не абстрактную ссылку на будущие данные.",
       "estimation": {
-        "hours": 8,
-        "story_points": 5
+        "hours": 4,
+        "story_points": 3
       },
       "dependencies": [],
       "definition_of_done": [
-        "Fixture layer exists for backend and frontend",
-        "Reproduction commands use real files and tests",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Есть fixture Codex session artifact с реальным session id и user/assistant history",
-        "Есть helper для artifact hash before/after interactive run",
-        "Есть backend и Playwright harness для later tasks"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given чистое repo state, When bootstrap fixture task выполняется, Then в репозитории появляются deterministic fixtures, helper scripts и базовые tests для interactive flow.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать fixture codex artifact, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "mkdir -p tmp/kanban-fixture-check",
-                "action": "Проверка fixture bootstrap на локальном репозитории",
-                "command": "python3 -m pytest tests/test_interactive_fixtures.py -k bootstrap",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать fixture Codex artifact",
+                "command": "python3 -m pytest tests/interactive/test_task_001.py -k fixture_artifact",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/kanban-fixture-check"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -140,16 +159,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given отсутствует fixture root или fixture metadata повреждена, When bootstrap validation запускается, Then система падает честно с clear fixture error.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать fixture codex artifact, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "mkdir -p tmp/kanban-fixture-check",
-                "action": "Проверка graceful failure для broken fixture metadata",
-                "command": "python3 scripts/check_interactive_fixtures.py --root tmp/kanban-fixture-check/missing",
-                "expected_output": "interactive fixtures are missing",
-                "expected_exit_code": 1,
-                "teardown_command": "rm -rf tmp/kanban-fixture-check"
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать fixture Codex artifact",
+                "command": "python3 -m pytest tests/interactive/test_task_001.py -k missing_fixture",
+                "expected_output": "missing fixture",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -171,141 +190,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "ready_for_dev",
-          "note": "Fusion review promoted fixture/bootstrap as the real first task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
-      ]
-    },
-    {
-      "id": "TASK-001",
-      "title": "Выбрать Codex transport и зафиксировать ADR",
-      "description": "Сравнить `codex exec resume --json` и `codex app-server`, выбрать primary transport и fallback policy, доказать выбор на fixture-backed session и выпустить transport ADR.",
-      "context": "Review consensus: v1 должен быть Codex-native, но нельзя предполагать, что один transport гарантированно достаточен. Нужны primary path, fallback policy и реальный probe.",
-      "status": "backlog",
-      "meta_intent": "Убрать архитектурную неоднозначность и выбрать runtime surface, на котором можно честно построить browser continuation.",
-      "estimation": {
-        "hours": 6,
-        "story_points": 3
-      },
-      "dependencies": [
-        "TASK-000"
       ],
-      "definition_of_done": [
-        "Transport decision is documented",
-        "Primary and fallback policy are explicit",
-        "Probe works on a fixture-backed session",
-        "Code and docs are simplified",
-        "Changes are committed atomically",
-        "Reproduction passed with CSM >= 95%"
-      ],
-      "success_criteria": [
-        "Есть ADR с primary transport и fallback decision",
-        "Есть реальный probe result на fixture-backed session",
-        "План не обещает PTY или QEMU semantics"
-      ],
-      "expectations": {
-        "green_paths": [
-          {
-            "id": "GP-1",
-            "behavior_bdd": "Given fixture Codex session exists, When transport probe запускается в auto mode, Then система выбирает supported transport и возвращает structured support verdict.",
-            "steps": [
-              {
-                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/interactive-fixture",
-                "action": "Проверка transport probe на реальной fixture session",
-                "command": "python3 scripts/interactive_transport_probe.py --fixture tmp/interactive-fixture/session.json --transport auto --output tmp/interactive-fixture/probe.json",
-                "expected_output": "\"transport_supported\": true",
-                "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/interactive-fixture"
-              }
-            ]
-          }
-        ],
-        "red_paths": [
-          {
-            "id": "RP-1",
-            "behavior_bdd": "Given transport недоступен или session fixture невалидна, When probe запускается, Then система возвращает unsupported verdict и clear reason without fake success.",
-            "steps": [
-              {
-                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "mkdir -p tmp/interactive-fixture && echo '{}' > tmp/interactive-fixture/bad.json",
-                "action": "Проверка unsupported transport verdict",
-                "command": "python3 scripts/interactive_transport_probe.py --fixture tmp/interactive-fixture/bad.json --transport invalid",
-                "expected_output": "unsupported interactive transport",
-                "expected_exit_code": 1,
-                "teardown_command": "rm -rf tmp/interactive-fixture"
-              }
-            ]
-          }
-        ]
-      },
-      "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
-        "total_green_steps": 1,
-        "passed_red_steps": 0,
-        "total_red_steps": 1,
-        "touched_files": [],
-        "last_failure_note": null
-      },
-      "artifacts_of_completion": [],
-      "history": [
-        {
-          "timestamp": "2026-03-13T06:21:27Z",
-          "from_status": null,
-          "to_status": "backlog",
-          "note": "Blocked behind deterministic fixture creation."
-        }
+      "lane": "fixtures",
+      "labels": [
+        "interactive",
+        "codex",
+        "fixtures",
+        "size:M"
       ]
     },
     {
       "id": "TASK-002",
-      "title": "Разрешить artifact-to-runtime session identity",
-      "description": "Сделать явный mapping от `harness/artifact_id` к resumable Codex session or thread identity, включая mismatch handling, fallback resolution и persisted operational identity.",
-      "context": "Один из strongest review points: dedicated URL у нас artifact-addressed, а Codex continuation runtime требует другой identity layer. Без него `/interactive` остаётся иллюзией.",
+      "title": "Собрать fixture identity mapping",
+      "description": "Подготовить fixture-слой для связи route identity и runtime identity.",
+      "context": "Interactive URL опирается на artifact identity, а continuation живет на runtime identity.",
       "status": "backlog",
-      "meta_intent": "Связать текущую detail-route identity с реальным Codex continuation target без мутации source artifact.",
+      "meta_intent": "Убрать первую большую architectural gap между detail route и resumable runtime.",
       "estimation": {
-        "hours": 6,
-        "story_points": 3
+        "hours": 3,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-000",
         "TASK-001"
       ],
       "definition_of_done": [
-        "Identity mapping rules are explicit",
-        "Mismatch and fallback cases are tested",
-        "Operational identity is stored outside the source artifact",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Можно детерминированно найти Codex runtime identity из artifact route",
-        "Broken or missing identity не приводит к silent failure",
-        "Source artifact не меняется during identity resolution"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given valid artifact route and fixture rollout metadata, When identity resolution запускается, Then система возвращает stable resumable Codex identity.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать fixture identity mapping, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/identity-fixture",
-                "action": "Проверка artifact-to-runtime identity resolution",
-                "command": "python3 -m pytest tests/test_interactive_identity.py -k resolves_runtime_identity",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать fixture identity mapping",
+                "command": "python3 -m pytest tests/interactive/test_task_002.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/identity-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -313,16 +249,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given artifact metadata повреждена или runtime identity отсутствует, When identity resolution запускается, Then backend возвращает disabled interactive reason и no fake href.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать fixture identity mapping, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/identity-fixture --broken-runtime-id",
-                "action": "Проверка honest disabled identity state",
-                "command": "python3 -m pytest tests/test_interactive_identity.py -k missing_runtime_identity",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать fixture identity mapping",
+                "command": "python3 -m pytest tests/interactive/test_task_002.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/identity-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -344,55 +280,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Fusion review added this as a missing prerequisite task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "fixtures",
+      "labels": [
+        "interactive",
+        "codex",
+        "fixtures",
+        "size:M"
       ]
     },
     {
       "id": "TASK-003",
-      "title": "Определить interactive contract и boot payload",
-      "description": "Зафиксировать JSON contract для interactive capability, dedicated route, boot payload, runtime status snapshot, disabled reasons и unsupported-harness fallback policy.",
-      "context": "Несколько reviews сошлись на том, что current state_model нельзя просто перегрузить. Нужен отдельный contract boundary между detail page, interactive page и runtime supervisor.",
+      "title": "Сделать artifact hash helper",
+      "description": "Добавить helper для проверки, что source artifact не меняется во время interactive continuation.",
+      "context": "Нужен быстрый способ доказать immutability source artifact.",
       "status": "backlog",
-      "meta_intent": "Сделать `/interactive` route bootstrap deterministic и server-driven, а не client-side guesswork.",
+      "meta_intent": "Дать каждому следующему этапу cheap check на неизменность исходного артефакта.",
       "estimation": {
-        "hours": 5,
-        "story_points": 3
+        "hours": 3,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-001",
-        "TASK-002"
+        "TASK-001"
       ],
       "definition_of_done": [
-        "Interactive contract schema is explicit",
-        "Boot payload is testable",
-        "Unsupported harness and disabled reasons are explicit",
-        "Code and docs are simplified",
+        "Code is written (TDD approach)",
+        "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Есть поля `available`, `reason_disabled`, `transport`, `interactive_href`, `replay_available`, `runtime_status`",
-        "Dedicated interactive route bootstraps from one server payload",
-        "Other harnesses have honest fallback policy"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given supported Codex artifact route, When interactive boot payload запрашивается, Then API возвращает one-shot payload with identity, route, replay availability and runtime snapshot.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать artifact hash helper, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/boot-fixture",
-                "action": "Проверка server-driven boot payload contract",
-                "command": "python3 -m pytest tests/test_interactive_boot_contract.py -k boot_payload_supported",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать artifact hash helper",
+                "command": "python3 -m pytest tests/interactive/test_task_003.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/boot-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -400,16 +339,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given unsupported harness or disabled runtime capability, When boot payload запрашивается, Then API возвращает degraded read-only contract with explicit disabled reason and no broken boot guesswork.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать artifact hash helper, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка degraded boot payload",
-                "command": "python3 -m pytest tests/test_interactive_boot_contract.py -k boot_payload_disabled",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать artifact hash helper",
+                "command": "python3 -m pytest tests/interactive/test_task_003.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -431,56 +370,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Fusion review added explicit boot contract boundary."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "fixtures",
+      "labels": [
+        "interactive",
+        "codex",
+        "fixtures",
+        "size:M"
       ]
     },
     {
       "id": "TASK-004",
-      "title": "Построить replay snapshot и replay extraction",
-      "description": "Извлечь artifact-derived tail snapshot и canonical replay log так, чтобы interactive page могла входить не в пустую сессию, а в continuity-preserving history layer.",
-      "context": "Reviews отвергли идею, что `last 3 messages` достаточно. Нужны и tail snapshot для UX, и полный replay source для real continuation feel.",
+      "title": "Поднять backend pytest harness",
+      "description": "Собрать backend test harness для fixture-backed interactive сценариев.",
+      "context": "Без test harness поздние backend карточки будут зависеть от ручного запуска.",
       "status": "backlog",
-      "meta_intent": "Сделать browser entry mode похожим на real continuation, а не на новый пустой чат с summary badge.",
+      "meta_intent": "Сделать backend проверки автономными и повторяемыми.",
       "estimation": {
-        "hours": 7,
-        "story_points": 5
+        "hours": 4,
+        "story_points": 3
       },
       "dependencies": [
-        "TASK-000",
-        "TASK-002",
-        "TASK-003"
+        "TASK-001"
       ],
       "definition_of_done": [
-        "Tail snapshot and replay extraction exist",
-        "Replay source is deterministic",
-        "No mutation happens to source artifact",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Interactive page can show last 3 messages plus canonical replay source",
-        "Replay extraction preserves ordering",
-        "No-history sessions degrade honestly"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given fixture session with history, When replay extraction запускается, Then system returns tail snapshot and canonical replay items in stable order.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется поднять backend pytest harness, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-fixture",
-                "action": "Проверка replay extraction and tail snapshot",
-                "command": "python3 -m pytest tests/test_interactive_replay_source.py -k replay_source_happy_path",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Поднять backend pytest harness",
+                "command": "python3 -m pytest tests/interactive/test_task_004.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/replay-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -488,16 +429,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given session without readable history, When replay extraction запускается, Then API returns empty-history contract without crashing composer boot.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для поднять backend pytest harness, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-fixture --no-history",
-                "action": "Проверка empty-history replay fallback",
-                "command": "python3 -m pytest tests/test_interactive_replay_source.py -k replay_source_empty_history",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Поднять backend pytest harness",
+                "command": "python3 -m pytest tests/interactive/test_task_004.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/replay-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -519,55 +460,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Tail snapshot was expanded into a real replay-source task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "fixtures",
+      "labels": [
+        "interactive",
+        "codex",
+        "fixtures",
+        "size:M"
       ]
     },
     {
       "id": "TASK-005",
-      "title": "Зафиксировать replay-to-live boundary и runtime status contract",
-      "description": "Определить и реализовать boundary между replay phase и live continuation: `replay_started`, replay items, `replay_complete`, initial runtime status snapshot, runtime init failure semantics и no-duplication guarantees.",
-      "context": "Это самый устойчивый gap across reviews. Kimi-web-like experience держится не на summary, а на честном переходе replay -> live.",
+      "title": "Поднять Playwright skeleton",
+      "description": "Сделать начальный Playwright skeleton для будущего interactive route.",
+      "context": "Published proof требует browser harness с самого начала.",
       "status": "backlog",
-      "meta_intent": "Сделать момент перехода в live continuation понятным, стабильным и безопасным для browser UI.",
+      "meta_intent": "Подготовить браузерный контур, который потом расширяется без переделки основы.",
       "estimation": {
-        "hours": 8,
-        "story_points": 5
+        "hours": 4,
+        "story_points": 3
       },
       "dependencies": [
-        "TASK-003",
-        "TASK-004"
+        "TASK-001"
       ],
       "definition_of_done": [
-        "Replay-live cutover contract is explicit",
-        "Runtime status snapshot exists",
-        "Replay success plus runtime init failure has honest degraded semantics",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "There is one canonical handoff from replay to live",
-        "UI can distinguish replay phase from runtime phase",
-        "Partial replay or init failure does not blank the page"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given replay source and runtime transport are available, When interactive stream boots, Then replay completes first and only then live runtime status is exposed as ready.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется поднять playwright skeleton, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-live-fixture",
-                "action": "Проверка replay-to-live cutover semantics",
-                "command": "python3 -m pytest tests/test_interactive_replay_live_boundary.py -k replay_then_live",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Поднять Playwright skeleton",
+                "command": "python3 -m pytest tests/interactive/test_task_005.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/replay-live-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -575,16 +519,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given replay succeeds but runtime initialization fails, When interactive stream boots, Then page stays readable with replay content and explicit degraded runtime status.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для поднять playwright skeleton, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/replay-live-fixture --runtime-init-fails",
-                "action": "Проверка degraded state after replay success",
-                "command": "python3 -m pytest tests/test_interactive_replay_live_boundary.py -k replay_ok_runtime_fail",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Поднять Playwright skeleton",
+                "command": "python3 -m pytest tests/interactive/test_task_005.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/replay-live-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -606,55 +550,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Fusion review elevated replay-live rigor to a dedicated task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "fixtures",
+      "labels": [
+        "interactive",
+        "codex",
+        "fixtures",
+        "size:M"
       ]
     },
     {
       "id": "TASK-006",
-      "title": "Сделать operational state store с crash recovery и GC",
-      "description": "Создать отдельное operational storage место для runtime state, resolved runtime identity, replay metadata, crash markers, TTL и garbage-collection rules без изменения source artifact.",
-      "context": "Initial plan уже понимал separation, но review добавил crash recovery, orphan cleanup и persisted replay metadata как обязательные части.",
+      "title": "Собрать Codex transport matrix",
+      "description": "Сравнить `codex exec resume --json` и `codex app-server` по реально доступным сигналам и ограничениям.",
+      "context": "Нужен фактический capability matrix до выбора transport.",
       "status": "backlog",
-      "meta_intent": "Сохранить source artifact как truth прошлого и не потерять управляемость live continuation после disconnect или restart.",
+      "meta_intent": "Снять неопределенность и не строить v1 на догадках.",
       "estimation": {
-        "hours": 8,
-        "story_points": 5
+        "hours": 3,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-002",
-        "TASK-005"
+        "TASK-001"
       ],
       "definition_of_done": [
-        "Operational store is separate from the source artifact",
-        "Crash-recovery markers and GC rules exist",
-        "Artifact hash remains unchanged during runtime state writes",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Operational state can survive reconnect and backend restart",
-        "Orphaned sessions are collectible",
-        "Source artifact stays immutable"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given interactive runtime starts, When operational state is persisted, Then runtime metadata is written outside the artifact and artifact hash remains unchanged.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать codex transport matrix, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/store-fixture && sha256sum tmp/store-fixture/session.jsonl > tmp/store-fixture/before.sha",
-                "action": "Проверка operational store separation and artifact immutability",
-                "command": "python3 -m pytest tests/test_interactive_store.py -k store_happy_path && sha256sum tmp/store-fixture/session.jsonl > tmp/store-fixture/after.sha && diff -u tmp/store-fixture/before.sha tmp/store-fixture/after.sha",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать Codex transport matrix",
+                "command": "python3 -m pytest tests/interactive/test_task_006.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/store-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -662,16 +609,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given operational state root is unwritable, When runtime persistence begins, Then backend returns a clear store error and does not mutate the source artifact.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать codex transport matrix, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "mkdir -p tmp/store-fixture/locked && chmod 500 tmp/store-fixture/locked",
-                "action": "Проверка graceful failure for unwritable state root",
-                "command": "python3 -m pytest tests/test_interactive_store.py -k unwritable_store_root",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать Codex transport matrix",
+                "command": "python3 -m pytest tests/interactive/test_task_006.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "chmod 700 tmp/store-fixture/locked && rm -rf tmp/store-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -693,57 +640,59 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Crash recovery and GC were added to the operational layer task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "transport",
+      "labels": [
+        "interactive",
+        "codex",
+        "transport",
+        "size:M"
       ]
     },
     {
       "id": "TASK-007",
-      "title": "Поднять interactive supervisor и lifecycle rules",
-      "description": "Сделать backend supervisor для per-session Codex continuation: start, stop, status, busy lock, single-writer policy, reconnect ownership, backend restart behavior и cleanup reason semantics.",
-      "context": "Текущий app websocket не про per-session continuation. Reviews подчеркнули, что lifecycle and ownership rules должны быть first-class, а не побочным эффектом auth.",
+      "title": "Сделать transport probe",
+      "description": "Реализовать probe, который на fixture-backed session проверяет support выбранного transport.",
+      "context": "ADR без реального probe останется только мнением.",
       "status": "backlog",
-      "meta_intent": "Дать browser interactive page настоящий runtime control plane, а не имитацию живого режима.",
+      "meta_intent": "Получить машинно-проверяемый verdict по transport support.",
       "estimation": {
-        "hours": 12,
-        "story_points": 8
+        "hours": 4,
+        "story_points": 3
       },
       "dependencies": [
-        "TASK-001",
-        "TASK-002",
-        "TASK-005",
+        "TASK-004",
         "TASK-006"
       ],
       "definition_of_done": [
-        "Supervisor manages one runtime per interactive session",
-        "Busy, lock, reconnect and restart rules are explicit",
-        "Cleanup and crash behavior are observable",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Single writer policy is enforced",
-        "Reconnect does not create duplicate writers",
-        "Supervisor restart or crash has an honest recovery behavior"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given valid interactive session identity and supported transport, When supervisor starts, Then one managed runtime becomes available and emits lifecycle status updates.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать transport probe, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/supervisor-fixture",
-                "action": "Проверка interactive supervisor lifecycle",
-                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k lifecycle_happy_path",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать transport probe",
+                "command": "python3 -m pytest tests/interactive/test_task_007.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/supervisor-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -751,16 +700,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given same interactive session already has an active writer, When another writer tries to attach, Then supervisor rejects it with a clear busy or ownership error.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать transport probe, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/prepare_interactive_fixture.py --output tmp/supervisor-fixture",
-                "action": "Проверка duplicate writer rejection",
-                "command": "python3 -m pytest tests/test_interactive_supervisor.py -k duplicate_writer_rejected",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать transport probe",
+                "command": "python3 -m pytest tests/interactive/test_task_007.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "rm -rf tmp/supervisor-fixture"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -782,55 +731,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Lifecycle rules were strengthened with lock, reconnect and restart semantics."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "transport",
+      "labels": [
+        "interactive",
+        "codex",
+        "transport",
+        "size:M"
       ]
     },
     {
       "id": "TASK-008",
-      "title": "Нормализовать browser event stream",
-      "description": "Определить и реализовать normalized outbound event model для assistant text, reasoning, tool calls, command output, runtime status, degraded states, busy rejection и duplicate-event tolerance on reconnect.",
-      "context": "Reviews сошлись: generic rendering допустим, но без stable ids, ordering guarantees и replay/live merge правил UI будет хрупким.",
+      "title": "Зафиксировать transport ADR",
+      "description": "Описать primary transport, fallback policy и non-goals для v1.",
+      "context": "После matrix и probe выбор должен быть закреплен явно.",
       "status": "backlog",
-      "meta_intent": "Сделать live browser timeline читаемым и устойчивым даже при reconnect и unknown event types.",
+      "meta_intent": "Убрать двусмысленность для backend и frontend задач.",
       "estimation": {
-        "hours": 9,
-        "story_points": 5
+        "hours": 2,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-005",
         "TASK-007"
       ],
       "definition_of_done": [
-        "Outbound event schema is normalized",
-        "Stable ids and ordering guarantees exist",
-        "Reconnect duplicate tolerance exists",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Replay + live merge keeps stable order",
-        "Unknown events degrade to safe generic blocks",
-        "Busy-session rejection becomes a UI-safe normalized event"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given runtime emits reasoning, tool calls and command output, When browser stream reducer processes them, Then events keep stable order and correlation ids.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется зафиксировать transport adr, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка event normalization with ordering guarantees",
-                "command": "python3 -m pytest tests/test_interactive_event_normalization.py -k stable_order_and_ids",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Зафиксировать transport ADR",
+                "command": "python3 -m pytest tests/interactive/test_task_008.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -838,16 +790,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given runtime emits unknown event or reconnect duplicates, When reducer processes them, Then UI degrades safely instead of crashing or duplicating visible timeline irreparably.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для зафиксировать transport adr, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка unknown and duplicate event tolerance",
-                "command": "python3 -m pytest tests/test_interactive_event_normalization.py -k unknown_or_duplicate_tolerance",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Зафиксировать transport ADR",
+                "command": "python3 -m pytest tests/interactive/test_task_008.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -869,56 +821,59 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Event normalization was tightened with ids, order and duplicate tolerance."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "transport",
+      "labels": [
+        "interactive",
+        "codex",
+        "transport",
+        "size:S"
       ]
     },
     {
       "id": "TASK-009",
-      "title": "Реализовать browser-to-runtime control actions",
-      "description": "Сделать bidirectional action channel для prompt submit, cancel, approval response, question or request-user-input response и invalid-state handling when the session is busy.",
-      "context": "One backend review explicitly pointed out the missing inbound side. Kimi-like continuation невозможен, если browser только читает stream, но не умеет отвечать runtime.",
+      "title": "Определить runtime identity schema",
+      "description": "Сделать явную схему operational identity, отдельную от source artifact.",
+      "context": "Нужна contract boundary для route-to-runtime mapping.",
       "status": "backlog",
-      "meta_intent": "Сделать interactive page реально interactive, а не live log viewer.",
+      "meta_intent": "Не смешивать immutable artifact и mutable runtime state.",
       "estimation": {
-        "hours": 9,
-        "story_points": 5
+        "hours": 2,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-003",
-        "TASK-007",
+        "TASK-002",
         "TASK-008"
       ],
       "definition_of_done": [
-        "Inbound action schema is explicit",
-        "Prompt, cancel and approval paths are wired",
-        "Busy invalid-state errors are honest and recoverable",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Browser can send a prompt and receive continuation output",
-        "Approval or user-input requests have a response path",
-        "Cancel and busy-state semantics are deterministic"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given live interactive session is ready, When browser sends prompt and receives an approval or question flow, Then response roundtrip completes through the same control channel.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется определить runtime identity schema, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка browser-to-runtime action roundtrip",
-                "command": "python3 -m pytest tests/test_interactive_control_actions.py -k prompt_and_approval_roundtrip",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Определить runtime identity schema",
+                "command": "python3 -m pytest tests/interactive/test_task_009.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -926,16 +881,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given session is busy or a control action is invalid, When browser sends a new action, Then backend returns a clear invalid-state response instead of silent failure.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для определить runtime identity schema, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка busy-state and invalid action handling",
-                "command": "python3 -m pytest tests/test_interactive_control_actions.py -k busy_or_invalid_action",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Определить runtime identity schema",
+                "command": "python3 -m pytest tests/interactive/test_task_009.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -957,59 +912,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Fusion review added missing inbound interaction task."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "identity",
+      "labels": [
+        "interactive",
+        "codex",
+        "identity",
+        "size:S"
       ]
     },
     {
       "id": "TASK-010",
-      "title": "Построить dedicated interactive route и frontend state machine",
-      "description": "Сделать `/sessions/[harness]/[id]/interactive`, CTA с detail page и explicit frontend states: `loading_history`, `history_ready`, `connecting_runtime`, `live_ready`, `reconnecting`, `degraded_read_only`, `runtime_error`.",
-      "context": "Frontend and Kimi-pattern reviews сошлись: route должен bootstrappиться server-side, не blank-screen-ить, и честно показывать degraded states и unsupported harness behavior.",
+      "title": "Сделать identity resolver happy path",
+      "description": "Реализовать детерминированное разрешение runtime identity из artifact route.",
+      "context": "Нужен рабочий happy path до проработки ошибок.",
       "status": "backlog",
-      "meta_intent": "Сделать direct GET URL first-class surface для real interactive continuation, а не hidden experimental panel.",
+      "meta_intent": "Позволить interactive URL находить настоящий continuation target.",
       "estimation": {
-        "hours": 12,
-        "story_points": 8
+        "hours": 4,
+        "story_points": 3
       },
       "dependencies": [
-        "TASK-003",
-        "TASK-004",
-        "TASK-005",
-        "TASK-008",
         "TASK-009"
       ],
       "definition_of_done": [
-        "Dedicated route exists",
-        "CTA and direct URL both work",
-        "Frontend state machine is explicit",
-        "Unsupported and degraded states are honest",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "User can open interactive route directly by URL",
-        "Page shows replay before or during live runtime boot",
-        "No blank screen appears on unsupported or degraded entry"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given supported Codex detail page and boot payload, When user opens interactive route via CTA or direct URL, Then page renders history first and transitions into live-ready state.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать identity resolver happy path, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
-                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
-                "setup_command": "npm run build",
-                "action": "Проверка dedicated route and state machine happy path",
-                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive route history to live ready\"",
-                "expected_output": "1 passed",
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать identity resolver happy path",
+                "command": "python3 -m pytest tests/interactive/test_task_010.py -k green",
+                "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1017,16 +971,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given unsupported harness or stale session boot, When user opens direct interactive URL, Then page renders degraded read-only mode with explicit reason instead of blank or broken state.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать identity resolver happy path, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
-                "working_directory": "/home/pets/zoo/agents_sessions_dashboard/frontend",
-                "setup_command": "npm run build",
-                "action": "Проверка degraded direct-entry behavior",
-                "command": "npx playwright test e2e/interactive-session.spec.ts --grep \"interactive route degraded direct entry\"",
-                "expected_output": "1 passed",
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать identity resolver happy path",
+                "command": "python3 -m pytest tests/interactive/test_task_010.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1048,56 +1002,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Interactive route task was rewritten around explicit browser states."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "identity",
+      "labels": [
+        "interactive",
+        "codex",
+        "identity",
+        "size:M"
       ]
     },
     {
       "id": "TASK-011",
-      "title": "Добавить auth, ownership, resource limits и observability",
-      "description": "Укрепить interactive route authorization, session ownership, second-writer policy, idle timeout, runtime limits, audit logs, per-session diagnostics, replay-live phase trace и cleanup reasons.",
-      "context": "Reviews сошлись, что safety and auth нельзя отделять от runtime rules, а observability нужна для honest reproduction loops and published debugging.",
+      "title": "Покрыть identity mismatch handling",
+      "description": "Добавить обработку missing, stale и mismatched identity случаев.",
+      "context": "Без этого `/interactive` будет давать ложное ощущение доступности.",
       "status": "backlog",
-      "meta_intent": "Сделать interactive continuation безопасным и дебажимым на опубликованном URL, а не только локально впечатляющим.",
+      "meta_intent": "Сделать ошибки маршрутизации честными и объяснимыми.",
       "estimation": {
-        "hours": 10,
-        "story_points": 5
+        "hours": 3,
+        "story_points": 3
       },
       "dependencies": [
-        "TASK-006",
-        "TASK-007",
         "TASK-010"
       ],
       "definition_of_done": [
-        "Auth and ownership are enforced",
-        "Resource limits and cleanup rules exist",
-        "Runtime diagnostics are visible",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Unauthorized interactive access is denied before runtime start",
-        "Idle or orphaned sessions are cleaned predictably",
-        "Failure diagnostics are discoverable from logs or status endpoints"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given authenticated owner opens interactive route, When runtime starts and later reconnects, Then ownership, logs and status traces remain consistent.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется покрыть identity mismatch handling, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка auth, ownership and diagnostics happy path",
-                "command": "python3 -m pytest tests/test_interactive_auth_and_observability.py -k owner_happy_path",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Покрыть identity mismatch handling",
+                "command": "python3 -m pytest tests/interactive/test_task_011.py -k green",
                 "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1105,16 +1061,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given unauthenticated client or second writer attempts access, When interactive start or websocket connect is requested, Then runtime does not start and backend records a clear rejection reason.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для покрыть identity mismatch handling, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "true",
-                "action": "Проверка unauthorized and second-writer rejection",
-                "command": "python3 -m pytest tests/test_interactive_auth_and_observability.py -k unauthorized_or_second_writer",
-                "expected_output": "passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Покрыть identity mismatch handling",
+                "command": "python3 -m pytest tests/interactive/test_task_011.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1136,54 +1092,59 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Observability and resource rules were merged into the runtime safety layer."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "identity",
+      "labels": [
+        "interactive",
+        "codex",
+        "identity",
+        "size:M"
       ]
     },
     {
       "id": "TASK-012",
-      "title": "Подтвердить local replay, reconnect и lifecycle proof",
-      "description": "Добавить explicit local proof before deploy: route open, replay completes before composer unlock, prompt roundtrip, reconnect after partial stream, busy-session rejection, init error fallback и artifact immutability after interactive use.",
-      "context": "Verification review чётко указал, что published verification слишком поздний этап без local smoke and lifecycle proof.",
+      "title": "Добавить interactive capability в detail payload",
+      "description": "Расширить detail payload честным capability block для interactive mode.",
+      "context": "Пользователь должен видеть доступность interactive режима еще на detail page.",
       "status": "backlog",
-      "meta_intent": "Зафиксировать, что browser continuation реально работает локально и не ломает source artifact ещё до published deploy.",
+      "meta_intent": "Сделать promise явным: available, disabled reason, route href, transport label.",
       "estimation": {
-        "hours": 8,
-        "story_points": 5
+        "hours": 3,
+        "story_points": 2
       },
       "dependencies": [
-        "TASK-010",
-        "TASK-011"
+        "TASK-008",
+        "TASK-010"
       ],
       "definition_of_done": [
-        "Local Playwright and backend lifecycle proofs exist",
-        "Artifact immutability is proven end-to-end",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Replay and reconnect are locally verified",
-        "Busy and init-error states are locally verified",
-        "Artifact hash is unchanged after local interactive flow"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given local app and fixture session are running, When Playwright opens interactive route and sends a prompt, Then replay completes before composer unlock and prompt roundtrip succeeds.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить interactive capability в detail payload, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/start_local_interactive_fixture_stack.py --fixture tmp/local-proof && cd frontend && npm run build",
-                "action": "Проверка local interactive happy path and artifact immutability",
-                "command": "cd frontend && npx playwright test e2e/interactive-session.spec.ts --grep \"local interactive happy path\" && python3 ../scripts/check_artifact_hash_unchanged.py --fixture ../tmp/local-proof",
-                "expected_output": "1 passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить interactive capability в detail payload",
+                "command": "python3 -m pytest tests/interactive/test_task_012.py -k green",
+                "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "python3 scripts/stop_local_interactive_fixture_stack.py --fixture tmp/local-proof && rm -rf tmp/local-proof"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1191,16 +1152,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given websocket drops during replay or a second prompt is sent while busy, When local interactive checks run, Then page degrades honestly and busy rejection is visible without hanging.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить interactive capability в detail payload, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "python3 scripts/start_local_interactive_fixture_stack.py --fixture tmp/local-proof --flaky-replay && cd frontend && npm run build",
-                "action": "Проверка local replay interruption and busy rejection",
-                "command": "cd frontend && npx playwright test e2e/interactive-session.spec.ts --grep \"local replay reconnect and busy rejection\"",
-                "expected_output": "1 passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить interactive capability в detail payload",
+                "command": "python3 -m pytest tests/interactive/test_task_012.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "python3 scripts/stop_local_interactive_fixture_stack.py --fixture tmp/local-proof && rm -rf tmp/local-proof"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1222,54 +1183,58 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Local proof was promoted to a dedicated pre-published gate."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "boot-payload",
+      "labels": [
+        "interactive",
+        "codex",
+        "boot-payload",
+        "size:M"
       ]
     },
     {
       "id": "TASK-013",
-      "title": "Сделать published deploy proof для interactive route",
-      "description": "Выполнить rebuild and republish, затем published verification через `make published-restore`, smoke, confidence, degraded-state checks, auth checks, reconnect checks, log capture и summary-path evidence.",
-      "context": "Repo rules for major UI/runtime work требуют published proof. Reviews усилили это: нужны не только route smoke, но и confidence output, logs и honest degraded-state checks.",
+      "title": "Определить boot payload schema",
+      "description": "Сформировать контракт boot payload для interactive страницы.",
+      "context": "Frontend нельзя запускать без понятного initial payload shape.",
       "status": "backlog",
-      "meta_intent": "Дойти до состояния, когда пользователь реально видит working deployed interactive page на dedicated URL, а не локальный prototype.",
+      "meta_intent": "Дать странице stable input contract до live attach.",
       "estimation": {
-        "hours": 8,
-        "story_points": 5
+        "hours": 3,
+        "story_points": 3
       },
       "dependencies": [
         "TASK-012"
       ],
       "definition_of_done": [
-        "Published stack is restored",
-        "Published route smoke and confidence checks pass",
-        "Logs and summary paths are recorded",
+        "Code is written (TDD approach)",
         "Code is simplified",
         "Changes are committed atomically",
         "Reproduction passed with CSM >= 95%"
       ],
       "success_criteria": [
-        "Published interactive route opens and shows replay/live progression",
-        "Published degraded and unauthorized states are honest",
-        "Smoke and confidence summary paths are stored as evidence"
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
       ],
       "expectations": {
         "green_paths": [
           {
             "id": "GP-1",
-            "behavior_bdd": "Given published stack is restored, When Playwright opens a valid interactive route, Then the page renders replay, reaches live-ready or honest runtime state, and published diagnostics capture smoke and confidence summaries.",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется определить boot payload schema, Then зеленый сценарий проходит и подтверждает целевое поведение.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "make published-restore",
-                "action": "Проверка published interactive happy path with recorded evidence",
-                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive route works\"",
-                "expected_output": "1 passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Определить boot payload schema",
+                "command": "python3 -m pytest tests/interactive/test_task_013.py -k green",
+                "expected_output": "passed",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1277,16 +1242,16 @@
         "red_paths": [
           {
             "id": "RP-1",
-            "behavior_bdd": "Given published runtime cannot start or websocket drops after replay, When published interactive checks run, Then page stays readable with explicit degraded reason, unauthorized access is denied, and failure evidence is visible in smoke, confidence and logs.",
+            "behavior_bdd": "Given сломанный или запрещенный вход для определить boot payload schema, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
             "steps": [
               {
                 "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
-                "setup_command": "make published-restore",
-                "action": "Проверка published degraded, unauthorized and reconnect failure modes",
-                "command": "cd frontend && npx playwright test e2e/published-url.spec.ts --grep \"published interactive degraded and unauthorized states\"",
-                "expected_output": "1 passed",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Определить boot payload schema",
+                "command": "python3 -m pytest tests/interactive/test_task_013.py -k red",
+                "expected_output": "expected failure",
                 "expected_exit_code": 0,
-                "teardown_command": "true"
+                "teardown_command": "rm -rf tmp/interactive-task-check"
               }
             ]
           }
@@ -1308,11 +1273,2935 @@
       "artifacts_of_completion": [],
       "history": [
         {
-          "timestamp": "2026-03-13T06:21:27Z",
+          "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
-          "note": "Published gate was strengthened with restore, confidence, logs and degraded-state evidence."
+          "note": "Task resized to fit <=4h and <=4 story points."
         }
+      ],
+      "lane": "boot-payload",
+      "labels": [
+        "interactive",
+        "codex",
+        "boot-payload",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-014",
+      "title": "Сделать boot payload serializer",
+      "description": "Собрать serializer, который выдает initial boot payload по fixture-backed session.",
+      "context": "Schema без serializer не проверяет жизнеспособность контракта.",
+      "status": "backlog",
+      "meta_intent": "Дать backend реальный путь к boot payload.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-013",
+        "TASK-010"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать boot payload serializer, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать boot payload serializer",
+                "command": "python3 -m pytest tests/interactive/test_task_014.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать boot payload serializer, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать boot payload serializer",
+                "command": "python3 -m pytest tests/interactive/test_task_014.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "boot-payload",
+      "labels": [
+        "interactive",
+        "codex",
+        "boot-payload",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-015",
+      "title": "Собрать tail snapshot extraction",
+      "description": "Достать последние сообщения, summary hints и ключевые identity hints из source artifact.",
+      "context": "Interactive страница не должна открываться в пустоту.",
+      "status": "backlog",
+      "meta_intent": "Показать пользователю честный хвост прошлой сессии до live continuation.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-001",
+        "TASK-010"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать tail snapshot extraction, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать tail snapshot extraction",
+                "command": "python3 -m pytest tests/interactive/test_task_015.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать tail snapshot extraction, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать tail snapshot extraction",
+                "command": "python3 -m pytest tests/interactive/test_task_015.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "replay",
+      "labels": [
+        "interactive",
+        "codex",
+        "replay",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-016",
+      "title": "Собрать replay event snapshot",
+      "description": "Нормализовать replay-снимок событий для browser delivery до live attach.",
+      "context": "Текстовый tail полезен, но нужен еще event-level replay.",
+      "status": "backlog",
+      "meta_intent": "Подготовить основание для воспроизведения истории в браузере.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-015"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать replay event snapshot, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать replay event snapshot",
+                "command": "python3 -m pytest tests/interactive/test_task_016.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать replay event snapshot, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать replay event snapshot",
+                "command": "python3 -m pytest tests/interactive/test_task_016.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "replay",
+      "labels": [
+        "interactive",
+        "codex",
+        "replay",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-017",
+      "title": "Добавить history complete marker",
+      "description": "Явно отметить границу между replay и live потоком.",
+      "context": "Без явного marker фронтенд не поймет, где заканчивается архивная часть.",
+      "status": "backlog",
+      "meta_intent": "Сделать переход replay -> live наблюдаемым и тестируемым.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-016"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить history complete marker, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить history complete marker",
+                "command": "python3 -m pytest tests/interactive/test_task_017.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить history complete marker, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить history complete marker",
+                "command": "python3 -m pytest tests/interactive/test_task_017.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "replay",
+      "labels": [
+        "interactive",
+        "codex",
+        "replay",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-018",
+      "title": "Определить runtime status contract",
+      "description": "Сформировать enum и payload для idle, active, waiting, error и reconnect статусов.",
+      "context": "Browser continuation требует явной модели runtime state.",
+      "status": "backlog",
+      "meta_intent": "Сделать lifecycle состояния единообразными для backend и frontend.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-013"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется определить runtime status contract, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Определить runtime status contract",
+                "command": "python3 -m pytest tests/interactive/test_task_018.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для определить runtime status contract, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Определить runtime status contract",
+                "command": "python3 -m pytest tests/interactive/test_task_018.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "handoff-status",
+      "labels": [
+        "interactive",
+        "codex",
+        "handoff-status",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-019",
+      "title": "Зафиксировать replay to live handoff",
+      "description": "Описать и реализовать правила handoff от replay к live session attach.",
+      "context": "Это ключевой seam всей kimi-like модели.",
+      "status": "backlog",
+      "meta_intent": "Избежать гонок и двусмысленности при подключении браузера.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-017",
+        "TASK-018"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется зафиксировать replay to live handoff, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Зафиксировать replay to live handoff",
+                "command": "python3 -m pytest tests/interactive/test_task_019.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для зафиксировать replay to live handoff, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Зафиксировать replay to live handoff",
+                "command": "python3 -m pytest tests/interactive/test_task_019.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "handoff-status",
+      "labels": [
+        "interactive",
+        "codex",
+        "handoff-status",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-020",
+      "title": "Сделать reconnect bootstrap snapshot",
+      "description": "Собрать отдельный bootstrap для reconnect cases с актуальным status snapshot.",
+      "context": "Reconnect нельзя решать тем же payload без дополнительных сигналов.",
+      "status": "backlog",
+      "meta_intent": "Сделать повторное подключение predictably resumable.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-019"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать reconnect bootstrap snapshot, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать reconnect bootstrap snapshot",
+                "command": "python3 -m pytest tests/interactive/test_task_020.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать reconnect bootstrap snapshot, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать reconnect bootstrap snapshot",
+                "command": "python3 -m pytest tests/interactive/test_task_020.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "handoff-status",
+      "labels": [
+        "interactive",
+        "codex",
+        "handoff-status",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-021",
+      "title": "Определить operational store schema",
+      "description": "Сделать схему хранилища для runtime identity, status snapshot и supervisor ownership.",
+      "context": "Store нужен до crash recovery и cleanup.",
+      "status": "backlog",
+      "meta_intent": "Дать interactive runtime явное место для operational state.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-010",
+        "TASK-018"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется определить operational store schema, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Определить operational store schema",
+                "command": "python3 -m pytest tests/interactive/test_task_021.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для определить operational store schema, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Определить operational store schema",
+                "command": "python3 -m pytest tests/interactive/test_task_021.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "operational-store",
+      "labels": [
+        "interactive",
+        "codex",
+        "operational-store",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-022",
+      "title": "Реализовать crash recovery store flow",
+      "description": "Сохранение и восстановление operational state после рестарта backend процесса.",
+      "context": "Без recovery interactive route будет хрупким после сбоя.",
+      "status": "backlog",
+      "meta_intent": "Сделать runtime продолжение устойчивым к process restart.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-021"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать crash recovery store flow, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать crash recovery store flow",
+                "command": "python3 -m pytest tests/interactive/test_task_022.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать crash recovery store flow, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать crash recovery store flow",
+                "command": "python3 -m pytest tests/interactive/test_task_022.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "operational-store",
+      "labels": [
+        "interactive",
+        "codex",
+        "operational-store",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-023",
+      "title": "Добавить GC rules для operational store",
+      "description": "Описать и реализовать cleanup stale runtime записей.",
+      "context": "Store без cleanup быстро станет источником мусора и ложных attach.",
+      "status": "backlog",
+      "meta_intent": "Держать operational state в рабочем и честном состоянии.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-022"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить gc rules для operational store, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить GC rules для operational store",
+                "command": "python3 -m pytest tests/interactive/test_task_023.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить gc rules для operational store, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить GC rules для operational store",
+                "command": "python3 -m pytest tests/interactive/test_task_023.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "operational-store",
+      "labels": [
+        "interactive",
+        "codex",
+        "operational-store",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-024",
+      "title": "Сделать ownership lock rules",
+      "description": "Ввести правила single-owner attach, lock acquisition и release.",
+      "context": "Interactive runtime должен защищаться от конфликтующих attach попыток.",
+      "status": "backlog",
+      "meta_intent": "Предотвратить race condition между несколькими клиентами.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-008",
+        "TASK-021"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать ownership lock rules, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать ownership lock rules",
+                "command": "python3 -m pytest tests/interactive/test_task_024.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать ownership lock rules, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать ownership lock rules",
+                "command": "python3 -m pytest tests/interactive/test_task_024.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "supervisor",
+      "labels": [
+        "interactive",
+        "codex",
+        "supervisor",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-025",
+      "title": "Реализовать supervisor start resume flow",
+      "description": "Собрать основной lifecycle для start/resume/reconnect под supervisor.",
+      "context": "Нужен центральный orchestrator вместо размазанной логики.",
+      "status": "backlog",
+      "meta_intent": "Дать backend контролируемый вход в live interactive mode.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-019",
+        "TASK-024"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать supervisor start resume flow, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать supervisor start resume flow",
+                "command": "python3 -m pytest tests/interactive/test_task_025.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать supervisor start resume flow, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать supervisor start resume flow",
+                "command": "python3 -m pytest tests/interactive/test_task_025.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "supervisor",
+      "labels": [
+        "interactive",
+        "codex",
+        "supervisor",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-026",
+      "title": "Реализовать supervisor stop cancel flow",
+      "description": "Добавить stop, cancel и error propagation в supervisor lifecycle.",
+      "context": "Lifecycle неполон без controlled shutdown и abort semantics.",
+      "status": "backlog",
+      "meta_intent": "Сделать live runtime управляемым и завершабельным.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-025"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать supervisor stop cancel flow, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать supervisor stop cancel flow",
+                "command": "python3 -m pytest tests/interactive/test_task_026.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать supervisor stop cancel flow, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать supervisor stop cancel flow",
+                "command": "python3 -m pytest tests/interactive/test_task_026.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "supervisor",
+      "labels": [
+        "interactive",
+        "codex",
+        "supervisor",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-027",
+      "title": "Сделать core event normalization",
+      "description": "Преобразовать runtime события Codex в browser-friendly event model.",
+      "context": "Сырые runtime события нельзя безопасно и стабильно показывать в UI без normalization.",
+      "status": "backlog",
+      "meta_intent": "Создать единый поток событий для interactive страницы.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-019",
+        "TASK-025"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать core event normalization, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать core event normalization",
+                "command": "python3 -m pytest tests/interactive/test_task_027.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать core event normalization, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать core event normalization",
+                "command": "python3 -m pytest tests/interactive/test_task_027.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "event-stream",
+      "labels": [
+        "interactive",
+        "codex",
+        "event-stream",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-028",
+      "title": "Добавить tool fallback rendering events",
+      "description": "Сделать fallback-события для неизвестных или частично поддержанных tool calls.",
+      "context": "Пользователь просил честный first pass, даже если tool UI еще не кастомизирован.",
+      "status": "backlog",
+      "meta_intent": "Не терять смысл tool activity при неполной визуализации.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 2
+      },
+      "dependencies": [
+        "TASK-027"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить tool fallback rendering events, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить tool fallback rendering events",
+                "command": "python3 -m pytest tests/interactive/test_task_028.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить tool fallback rendering events, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить tool fallback rendering events",
+                "command": "python3 -m pytest tests/interactive/test_task_028.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "event-stream",
+      "labels": [
+        "interactive",
+        "codex",
+        "event-stream",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-029",
+      "title": "Покрыть event stream contract tests",
+      "description": "Добавить тесты на порядок, форму и деградацию browser event stream.",
+      "context": "Нужен жесткий contract around normalized event stream.",
+      "status": "backlog",
+      "meta_intent": "Сделать поток событий устойчивым к регрессиям.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-027",
+        "TASK-028"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется покрыть event stream contract tests, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Покрыть event stream contract tests",
+                "command": "python3 -m pytest tests/interactive/test_task_029.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для покрыть event stream contract tests, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Покрыть event stream contract tests",
+                "command": "python3 -m pytest tests/interactive/test_task_029.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "event-stream",
+      "labels": [
+        "interactive",
+        "codex",
+        "event-stream",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-030",
+      "title": "Реализовать prompt submit action",
+      "description": "Поддержать отправку нового user prompt из browser continuation UI.",
+      "context": "Без prompt submit interactive route останется read-only replay экраном.",
+      "status": "backlog",
+      "meta_intent": "Дать странице базовую интерактивность.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-013",
+        "TASK-025",
+        "TASK-027"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать prompt submit action, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать prompt submit action",
+                "command": "python3 -m pytest tests/interactive/test_task_030.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать prompt submit action, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать prompt submit action",
+                "command": "python3 -m pytest tests/interactive/test_task_030.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "control-actions",
+      "labels": [
+        "interactive",
+        "codex",
+        "control-actions",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-031",
+      "title": "Реализовать cancel interrupt action",
+      "description": "Поддержать cancel или interrupt action из browser UI.",
+      "context": "Пользователю нужен хотя бы один control action кроме submit.",
+      "status": "backlog",
+      "meta_intent": "Сделать interactive continuation управляемым в ходе выполнения.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-025",
+        "TASK-027"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать cancel interrupt action, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать cancel interrupt action",
+                "command": "python3 -m pytest tests/interactive/test_task_031.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать cancel interrupt action, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать cancel interrupt action",
+                "command": "python3 -m pytest tests/interactive/test_task_031.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "control-actions",
+      "labels": [
+        "interactive",
+        "codex",
+        "control-actions",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-032",
+      "title": "Реализовать approval user input action",
+      "description": "Поддержать approval и user-input ответы для browser continuation.",
+      "context": "Именно эти ожидания чаще всего ломают bridge между backend и browser.",
+      "status": "backlog",
+      "meta_intent": "Не терять live flow на approval или input wait состояниях.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-025",
+        "TASK-027"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется реализовать approval user input action, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Реализовать approval user input action",
+                "command": "python3 -m pytest tests/interactive/test_task_032.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для реализовать approval user input action, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Реализовать approval user input action",
+                "command": "python3 -m pytest tests/interactive/test_task_032.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "control-actions",
+      "labels": [
+        "interactive",
+        "codex",
+        "control-actions",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-033",
+      "title": "Покрыть inbound action validation",
+      "description": "Добавить проверки auth, shape и ownership для всех browser-to-runtime actions.",
+      "context": "Control path должен быть жестче, чем read path.",
+      "status": "backlog",
+      "meta_intent": "Сделать inbound actions безопасными и предсказуемыми.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-030",
+        "TASK-031",
+        "TASK-032"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется покрыть inbound action validation, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Покрыть inbound action validation",
+                "command": "python3 -m pytest tests/interactive/test_task_033.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для покрыть inbound action validation, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Покрыть inbound action validation",
+                "command": "python3 -m pytest tests/interactive/test_task_033.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "control-actions",
+      "labels": [
+        "interactive",
+        "codex",
+        "control-actions",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-034",
+      "title": "Сделать backend interactive route loader",
+      "description": "Поднять dedicated GET route loader для `/interactive` с boot payload и route guards.",
+      "context": "Нужен реальный backend endpoint для входа на страницу.",
+      "status": "backlog",
+      "meta_intent": "Подготовить браузерный вход в continuation flow.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-014",
+        "TASK-020",
+        "TASK-029"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать backend interactive route loader, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать backend interactive route loader",
+                "command": "python3 -m pytest tests/interactive/test_task_034.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать backend interactive route loader, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать backend interactive route loader",
+                "command": "python3 -m pytest tests/interactive/test_task_034.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend-route",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-035",
+      "title": "Собрать interactive page shell",
+      "description": "Сделать базовый page shell с tail snapshot и route-level loading states.",
+      "context": "Пользователь хочет видеть не пустой экран, а контекст входа.",
+      "status": "backlog",
+      "meta_intent": "Дать dedicated URL минимально полезный UI каркас.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-015",
+        "TASK-034"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется собрать interactive page shell, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Собрать interactive page shell",
+                "command": "python3 -m pytest tests/interactive/test_task_035.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для собрать interactive page shell, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Собрать interactive page shell",
+                "command": "python3 -m pytest tests/interactive/test_task_035.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend-route",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-036",
+      "title": "Сделать live timeline and composer state",
+      "description": "Собрать live timeline, composer и основной frontend state machine.",
+      "context": "Сердце browser continuation живет именно здесь.",
+      "status": "backlog",
+      "meta_intent": "Дать странице поведение настоящего interactive continuation, а не статичного досье.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-029",
+        "TASK-030",
+        "TASK-031",
+        "TASK-032",
+        "TASK-035"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать live timeline and composer state, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать live timeline and composer state",
+                "command": "python3 -m pytest tests/interactive/test_task_036.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать live timeline and composer state, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать live timeline and composer state",
+                "command": "python3 -m pytest tests/interactive/test_task_036.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend-route",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-037",
+      "title": "Сделать reconnect busy error UI states",
+      "description": "Добавить UI для reconnect, busy session, init failure и degraded states.",
+      "context": "Плохие состояния должны быть такими же честными, как happy path.",
+      "status": "backlog",
+      "meta_intent": "Сделать страницу устойчивой и понятной при сбоях.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-020",
+        "TASK-036"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется сделать reconnect busy error ui states, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Сделать reconnect busy error UI states",
+                "command": "python3 -m pytest tests/interactive/test_task_037.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для сделать reconnect busy error ui states, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Сделать reconnect busy error UI states",
+                "command": "python3 -m pytest tests/interactive/test_task_037.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend-route",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-038",
+      "title": "Покрыть interactive route integration tests",
+      "description": "Проверить backend/frontend связку interactive route на локальном контуре.",
+      "context": "После сборки route нужен связный integration proof.",
+      "status": "backlog",
+      "meta_intent": "Подтвердить, что GET route действительно ведет в working continuation flow.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-034",
+        "TASK-035",
+        "TASK-036",
+        "TASK-037"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется покрыть interactive route integration tests, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Покрыть interactive route integration tests",
+                "command": "python3 -m pytest tests/interactive/test_task_038.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для покрыть interactive route integration tests, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Покрыть interactive route integration tests",
+                "command": "python3 -m pytest tests/interactive/test_task_038.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "frontend-route",
+      "labels": [
+        "interactive",
+        "codex",
+        "frontend-route",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-039",
+      "title": "Добавить session ownership enforcement",
+      "description": "Ограничить attach и control действия владельцем сессии или допустимым actor.",
+      "context": "Interactive route повышает риск пересечения пользователей.",
+      "status": "backlog",
+      "meta_intent": "Сделать continuation приватным и контролируемым.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-024",
+        "TASK-034"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить session ownership enforcement, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить session ownership enforcement",
+                "command": "python3 -m pytest tests/interactive/test_task_039.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить session ownership enforcement, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить session ownership enforcement",
+                "command": "python3 -m pytest tests/interactive/test_task_039.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "security-observability",
+      "labels": [
+        "interactive",
+        "codex",
+        "security-observability",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-040",
+      "title": "Добавить auth and origin rules",
+      "description": "Определить токены, origin checks и transport-level security rules для interactive endpoints.",
+      "context": "Kimi reference показывает, что web surface без access controls слишком опасен.",
+      "status": "backlog",
+      "meta_intent": "Закрыть базовый security контур для interactive страницы.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-034",
+        "TASK-039"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить auth and origin rules, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить auth and origin rules",
+                "command": "python3 -m pytest tests/interactive/test_task_040.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить auth and origin rules, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить auth and origin rules",
+                "command": "python3 -m pytest tests/interactive/test_task_040.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "security-observability",
+      "labels": [
+        "interactive",
+        "codex",
+        "security-observability",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-041",
+      "title": "Добавить resource limits and backpressure",
+      "description": "Ввести queue limits, rate guards и overload behavior для interactive runtime.",
+      "context": "Без ресурсных ограничений live bridge будет нестабилен при реальной нагрузке.",
+      "status": "backlog",
+      "meta_intent": "Сделать runtime предсказуемым под нагрузкой.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-025",
+        "TASK-040"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить resource limits and backpressure, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить resource limits and backpressure",
+                "command": "python3 -m pytest tests/interactive/test_task_041.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить resource limits and backpressure, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить resource limits and backpressure",
+                "command": "python3 -m pytest tests/interactive/test_task_041.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "security-observability",
+      "labels": [
+        "interactive",
+        "codex",
+        "security-observability",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-042",
+      "title": "Добавить lifecycle observability",
+      "description": "Собрать structured logs, counters и failure notes для lifecycle переходов interactive runtime.",
+      "context": "Без observability published proof и support будут слабыми.",
+      "status": "backlog",
+      "meta_intent": "Сделать поведение runtime наблюдаемым и отлаживаемым.",
+      "estimation": {
+        "hours": 3,
+        "story_points": 3
+      },
+      "dependencies": [
+        "TASK-025",
+        "TASK-034"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется добавить lifecycle observability, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Добавить lifecycle observability",
+                "command": "python3 -m pytest tests/interactive/test_task_042.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для добавить lifecycle observability, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Добавить lifecycle observability",
+                "command": "python3 -m pytest tests/interactive/test_task_042.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "security-observability",
+      "labels": [
+        "interactive",
+        "codex",
+        "security-observability",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-043",
+      "title": "Провести local happy path proof",
+      "description": "Подтвердить локально replay, live attach, submit и reconnect happy path.",
+      "context": "Local proof нужен до любого published deploy.",
+      "status": "backlog",
+      "meta_intent": "Доказать, что основной сценарий работает в контролируемой среде.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-038",
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-042"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется провести local happy path proof, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести local happy path proof",
+                "command": "python3 -m pytest tests/interactive/test_task_043.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для провести local happy path proof, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести local happy path proof",
+                "command": "python3 -m pytest tests/interactive/test_task_043.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-044",
+      "title": "Провести local failure and immutability proof",
+      "description": "Подтвердить busy, init-error, unauthorized и artifact immutability сценарии.",
+      "context": "Нужен отдельный локальный proof для failure-веток и неизменности source artifact.",
+      "status": "backlog",
+      "meta_intent": "Закрыть локальные риски до публикации.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-003",
+        "TASK-033",
+        "TASK-043"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется провести local failure and immutability proof, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести local failure and immutability proof",
+                "command": "python3 -m pytest tests/interactive/test_task_044.py -k green",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для провести local failure and immutability proof, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести local failure and immutability proof",
+                "command": "python3 -m pytest tests/interactive/test_task_044.py -k red",
+                "expected_output": "expected failure",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "size:M"
+      ]
+    },
+    {
+      "id": "TASK-045",
+      "title": "Провести published interactive proof",
+      "description": "Сделать rebuild, republish, Playwright smoke, degraded check и unauthorized check на опубликованном URL.",
+      "context": "Финальное пользовательское доверие появляется только после published verification.",
+      "status": "backlog",
+      "meta_intent": "Подтвердить, что interactive route доступен в браузере на живом окружении.",
+      "estimation": {
+        "hours": 4,
+        "story_points": 4
+      },
+      "dependencies": [
+        "TASK-005",
+        "TASK-043",
+        "TASK-044"
+      ],
+      "definition_of_done": [
+        "Code is written (TDD approach)",
+        "Code is simplified",
+        "Changes are committed atomically",
+        "Reproduction passed with CSM >= 95%"
+      ],
+      "success_criteria": [
+        "Есть наблюдаемое изменение ровно для этой карточки",
+        "Green и red path выражены отдельной проверкой без скрытой ручной магии"
+      ],
+      "expectations": {
+        "green_paths": [
+          {
+            "id": "GP-1",
+            "behavior_bdd": "Given зависимости карточки выполнены, When реализуется провести published interactive proof, Then зеленый сценарий проходит и подтверждает целевое поведение.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Провести published interactive proof",
+                "command": "python3 -m pytest tests/interactive/test_task_045.py -k published",
+                "expected_output": "passed",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ],
+        "red_paths": [
+          {
+            "id": "RP-1",
+            "behavior_bdd": "Given сломанный или запрещенный вход для провести published interactive proof, When запускается негативный сценарий, Then система падает честно и предсказуемо.",
+            "steps": [
+              {
+                "working_directory": "/home/pets/zoo/agents_sessions_dashboard",
+                "setup_command": "mkdir -p tmp/interactive-task-check",
+                "action": "Negative check for Провести published interactive proof",
+                "command": "python3 -m pytest tests/interactive/test_task_045.py -k unauthorized",
+                "expected_output": "unauthorized handled",
+                "expected_exit_code": 0,
+                "teardown_command": "rm -rf tmp/interactive-task-check"
+              }
+            ]
+          }
+        ]
+      },
+      "execution_state": {
+        "tdd_passed": false,
+        "simplified": false,
+        "committed": false,
+        "reproduce_attempts": 0,
+        "reproduce_csm_score": 0,
+        "passed_green_steps": 0,
+        "total_green_steps": 1,
+        "passed_red_steps": 0,
+        "total_red_steps": 1,
+        "touched_files": [],
+        "last_failure_note": null
+      },
+      "artifacts_of_completion": [],
+      "history": [
+        {
+          "timestamp": "2026-03-13T06:52:00Z",
+          "from_status": null,
+          "to_status": "backlog",
+          "note": "Task resized to fit <=4h and <=4 story points."
+        }
+      ],
+      "lane": "verification",
+      "labels": [
+        "interactive",
+        "codex",
+        "verification",
+        "size:M"
       ]
     }
   ]
