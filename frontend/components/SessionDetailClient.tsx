@@ -181,6 +181,50 @@ function formatSessionWindowValue(localValue?: string | null, isoValue?: string 
   return fallback;
 }
 
+function parseDateValue(value?: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function formatOffsetFromSessionStart(commitTimestamp?: string | null, sessionStartTimestamp?: string | null): string | null {
+  const commitDate = parseDateValue(commitTimestamp);
+  const sessionStartDate = parseDateValue(sessionStartTimestamp);
+
+  if (!commitDate || !sessionStartDate) {
+    return null;
+  }
+
+  const offsetSeconds = Math.max(0, Math.round((commitDate.getTime() - sessionStartDate.getTime()) / 1000));
+  if (offsetSeconds < 60) {
+    return 'в первую минуту сессии';
+  }
+
+  const hours = Math.floor(offsetSeconds / 3600);
+  const minutes = Math.floor((offsetSeconds % 3600) / 60);
+  const seconds = offsetSeconds % 60;
+  const parts: string[] = [];
+
+  if (hours > 0) {
+    parts.push(`${hours} ч`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes} мин`);
+  }
+  if (hours === 0 && seconds > 0) {
+    parts.push(`${seconds} сек`);
+  }
+
+  return parts.length > 0 ? `через ${parts.join(' ')} от старта` : null;
+}
+
 const evidenceTokenStopwords = new Set([
   'add',
   'added',
@@ -263,6 +307,14 @@ function buildCommitFileLinks(
         commit,
         files: scoredFiles,
         linkageLabel: 'linked by shared terms',
+      };
+    }
+
+    if (filesModified.length === 0) {
+      return {
+        commit,
+        files: [],
+        linkageLabel: 'real commit only',
       };
     }
 
@@ -607,8 +659,12 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
     `${filesModified.length} file signals`,
     `${gitCommits.length} commit signals`,
   ].join(' · ');
+  const commitEvidenceSummary = filesModified.length > 0
+    ? `${filesModified.length} file signals extracted from the artifact.`
+    : 'Artifact не извлёк files_modified, поэтому ниже показывается чистый список реальных commits без привязки к путям.';
   const evidenceMatrixDirection = buildEvidenceMatrixDirection(session?.intent_evolution || [], messageAnchors);
   const commitFileLinks = buildCommitFileLinks(gitCommits, filesModified);
+  const matchedCommitLinks = commitFileLinks.filter((entry) => entry.files.length > 0);
   const linkedFiles = new Set(commitFileLinks.flatMap((entry) => entry.files.map((file) => file.path)));
   const unmatchedFiles = filesModified.filter((filePath) => !linkedFiles.has(filePath));
   const matrixTimelineItems = timelineEvents.slice(0, 4);
@@ -802,51 +858,74 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     Repo outcome
                   </div>
                   <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700">
-                    commit ↔ file link
+                    summary, details below
                   </span>
                 </div>
 
                 <div className="grid gap-3">
-                  {commitFileLinks.length > 0 ? commitFileLinks.map((entry, index) => (
-                    <article
-                      key={`${entry.commit.hash}-${index}`}
-                      data-testid={`matrix-commit-link-${index}`}
-                      className="rounded-2xl border border-nexus-200 bg-[#fbfdff] p-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                  {gitCommits.length > 0 ? (
+                    <>
+                      <article
+                        data-testid="matrix-repo-summary"
+                        className="rounded-2xl border border-nexus-200 bg-[#fbfdff] p-4"
+                      >
                         <div className="text-sm font-semibold text-nexus-900">
-                          {entry.commit.title}
+                          {gitCommits.length} real commits captured in this session window
                         </div>
-                        <span className="rounded-full border border-nexus-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-nexus-600">
-                          {entry.linkageLabel}
-                        </span>
+                        <div className="mt-2 text-sm leading-6 text-nexus-600">
+                          Этот блок только кратко объясняет repo outcome. Подробный хронологический список commit titles находится ниже в секции Git commits during session.
+                        </div>
+                      </article>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <article
+                          data-testid="matrix-repo-first-commit"
+                          className="rounded-2xl border border-nexus-200 bg-[#fbfdff] p-4"
+                        >
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                            Start of repo outcome
+                          </div>
+                          <div className="mt-2 text-sm font-semibold text-nexus-900">
+                            {gitCommits[0]?.title}
+                          </div>
+                          <div className="mt-2 text-xs text-nexus-500">
+                            {gitCommits[0]?.committed_at_local || formatTimelineTimestamp(gitCommits[0]?.committed_at || '')}
+                          </div>
+                        </article>
+
+                        <article
+                          data-testid="matrix-repo-last-commit"
+                          className="rounded-2xl border border-nexus-200 bg-[#fbfdff] p-4"
+                        >
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                            End of repo outcome
+                          </div>
+                          <div className="mt-2 text-sm font-semibold text-nexus-900">
+                            {gitCommits[gitCommits.length - 1]?.title}
+                          </div>
+                          <div className="mt-2 text-xs text-nexus-500">
+                            {gitCommits[gitCommits.length - 1]?.committed_at_local || formatTimelineTimestamp(gitCommits[gitCommits.length - 1]?.committed_at || '')}
+                          </div>
+                        </article>
                       </div>
-                      <div className="mt-2 text-xs text-nexus-500">
-                        {entry.commit.committed_at_local || formatTimelineTimestamp(entry.commit.committed_at)}
-                      </div>
-                      {entry.files.length > 0 ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {entry.files.map((file, fileIndex) => (
-                            <span
-                              key={`${file.path}-${fileIndex}`}
-                              data-testid={`matrix-commit-file-${index}-${fileIndex}`}
-                              className={`rounded-full border px-3 py-1.5 text-sm ${
-                                file.confidence === 'matched'
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                                  : 'border-amber-200 bg-amber-50 text-amber-800'
-                              }`}
-                            >
-                              {file.path}
-                            </span>
-                          ))}
+
+                      <article
+                        data-testid="matrix-repo-linkage-state"
+                        className="rounded-2xl border border-dashed border-nexus-200 bg-white px-4 py-3"
+                      >
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                          Commit-file linkage state
                         </div>
-                      ) : (
-                        <div className="mt-3 text-sm text-nexus-500">
-                          Для этого commit title пока нет прямого file overlap внутри текущего окна.
+                        <div className="mt-2 text-sm text-nexus-600">
+                          {filesModified.length === 0
+                            ? 'У artifact нет files_modified, поэтому commit-file linking для этой сессии сейчас недоступен.'
+                            : matchedCommitLinks.length > 0
+                              ? `${matchedCommitLinks.length} commit hints имеют текстовое пересечение с files_modified. Это derived hint, а не git truth.`
+                              : 'Files modified есть, но уверенного текстового пересечения с commit titles не нашлось.'}
                         </div>
-                      )}
-                    </article>
-                  )) : filesModified.length > 0 ? (
+                      </article>
+                    </>
+                  ) : filesModified.length > 0 ? (
                     <div className="rounded-2xl border border-dashed border-nexus-200 bg-[#fbfdff] px-4 py-6 text-sm text-nexus-600">
                       Files modified видны, но commit narrative внутри окна не зафиксирован. Это тоже полезный сигнал расхождения.
                     </div>
@@ -856,7 +935,7 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     </div>
                   )}
 
-                  {unmatchedFiles.length > 0 ? (
+                  {unmatchedFiles.length > 0 && filesModified.length > 0 ? (
                     <div className="rounded-2xl border border-dashed border-nexus-200 bg-white px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
                         Files without clear commit narrative
@@ -1196,17 +1275,17 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-nexus-500">
-                    git commits during session
+                    real git commits in session window
                   </div>
-                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700">
-                    repo signal
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    source-of-truth repo signal
                   </span>
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-nexus-900">
-                  Коммиты в окно этой сессии
+                  Что реально закоммитили по проекту во время этой сессии
                 </h2>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-nexus-600">
-                  Это дополнительный источник смысла: заголовки коммитов помогают увидеть, чем разговор закончился в репозитории, а не только в чате.
+                  Это хронологический список реальных git commits из истории репозитория между стартом и концом этой сессии. Сначала факт commit, потом любые derived hints.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1226,6 +1305,44 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
             ) : null}
 
             {gitCommits.length > 0 ? (
+              <div className="mb-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-nexus-200 bg-white/85 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Commit signal
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-nexus-900">
+                    {gitCommits.length} real commits
+                  </div>
+                  <div className="mt-1 text-sm text-nexus-600">
+                    Взяты из `git log` внутри time window этой сессии.
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-nexus-200 bg-white/85 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    Session window
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-nexus-900">
+                    {timeWindowDurationValue}
+                  </div>
+                  <div className="mt-1 text-sm text-nexus-600">
+                    {timeWindowStartValue} → {timeWindowEndValue}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-nexus-200 bg-white/85 px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nexus-500">
+                    File evidence
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-nexus-900">
+                    {filesModified.length > 0 ? `${filesModified.length} paths` : 'no file paths'}
+                  </div>
+                  <div className="mt-1 text-sm text-nexus-600">
+                    {commitEvidenceSummary}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {gitCommits.length > 0 ? (
               <div className="grid gap-3">
                 {gitCommits.map((commit, index) => (
                   <article
@@ -1236,6 +1353,9 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-nexus-200 bg-[#fbfdff] px-2.5 py-1 text-xs font-semibold text-nexus-700">
+                            Commit {index + 1} / {gitCommits.length}
+                          </span>
                           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-mono text-xs text-emerald-700">
                             {commit.short_hash}
                           </span>
@@ -1246,6 +1366,19 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                         <h3 className="mt-3 text-base font-semibold text-nexus-900">
                           {commit.title}
                         </h3>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-nexus-600">
+                          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1">
+                            реальный git commit
+                          </span>
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1">
+                            внутри окна сессии
+                          </span>
+                          {formatOffsetFromSessionStart(commit.committed_at, timeWindow?.started_at || session?.started_at) ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1">
+                              {formatOffsetFromSessionStart(commit.committed_at, timeWindow?.started_at || session?.started_at)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="rounded-full border border-nexus-200 bg-[#fbfdff] px-3 py-1 text-xs text-nexus-500">
                         {commit.committed_at_local || formatTimelineTimestamp(commit.committed_at)}

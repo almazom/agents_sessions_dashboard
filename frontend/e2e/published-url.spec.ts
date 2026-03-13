@@ -1077,9 +1077,10 @@ test.describe('Published URL end-to-end', () => {
     await expect(page.getByTestId('future-actions')).toBeVisible();
     await expect(page.getByTestId('evidence-matrix')).toBeVisible();
     await expect(page.getByTestId('matrix-direction-item-0')).toContainText('первый шаг');
-    await expect(page.getByTestId('matrix-commit-link-0')).toContainText('Add session detail route');
-    await expect(page.getByTestId('matrix-commit-file-0-0')).toContainText('SessionDetailClient.tsx');
-    await expect(page.getByTestId('matrix-commit-file-1-0')).toContainText('GitCommitBlock.tsx');
+    await expect(page.getByTestId('matrix-repo-summary')).toContainText('2 real commits captured in this session window');
+    await expect(page.getByTestId('matrix-repo-first-commit')).toContainText('Add session detail route');
+    await expect(page.getByTestId('matrix-repo-last-commit')).toContainText('Add git commit block');
+    await expect(page.getByTestId('matrix-repo-linkage-state')).toContainText('derived hint');
     await expect(page.getByTestId('session-state-model')).toContainText('read-only');
     await expect(page.getByTestId('evidence-sparsity-notice')).toHaveCount(0);
     await expect(page.getByTestId('future-action-ask')).toContainText('Ask This Session');
