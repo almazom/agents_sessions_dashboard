@@ -360,7 +360,7 @@ def _set_session_cookie(response: Response, request: Request, session_id: str) -
         key="session_id",
         value=session_id,
         httponly=True,
-        secure=_request_is_https(request),
+        secure=request_is_https(request),
         samesite="strict",
         max_age=settings.auth_cookie_max_age_seconds,
     )
@@ -480,7 +480,7 @@ async def logout(
     response.delete_cookie(
         "session_id",
         samesite="strict",
-        secure=_request_is_https(request),
+        secure=request_is_https(request),
     )
 
     log_event(

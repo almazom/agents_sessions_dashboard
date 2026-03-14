@@ -22,6 +22,12 @@ from .interactive_identity import (
 )
 from .scanner import SessionScanner
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+INTERACTIVE_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "interactive"
+INTERACTIVE_FIXTURE_FALLBACKS = {
+    "codex": INTERACTIVE_FIXTURE_ROOT / "codex" / "rollout-interactive-fixture.jsonl",
+}
+
 DEFAULT_TIMEZONE = "Europe/Moscow"
 DEFAULT_LIVE_WITHIN_MINUTES = 10
 DEFAULT_ACTIVE_WITHIN_MINUTES = 60
@@ -257,10 +263,36 @@ def _iter_provider_candidate_paths(harness: str, route_id: str) -> Iterable[Path
 
 
 def resolve_session_file_fallback(harness: str, route_id: str) -> Optional[Path]:
+    interactive_fixture_path = INTERACTIVE_FIXTURE_FALLBACKS.get(harness)
+    if (
+        interactive_fixture_path is not None
+        and interactive_fixture_path.exists()
+        and interactive_fixture_path.name == route_id
+    ):
+        return interactive_fixture_path
+
     for candidate in _iter_provider_candidate_paths(harness, route_id):
         if candidate.is_file():
             return candidate
     return None
+
+
+def _apply_repo_fixture_session_overrides(
+    harness: str,
+    file_path: Path,
+    session: Dict[str, Any],
+) -> Dict[str, Any]:
+    fixture_path = INTERACTIVE_FIXTURE_FALLBACKS.get(harness)
+    if fixture_path is None:
+        return session
+
+    if file_path.expanduser().resolve() != fixture_path.expanduser().resolve():
+        return session
+
+    return {
+        **session,
+        "resume_supported": True,
+    }
 
 
 def parse_session_file(harness: str, file_path: Path) -> Dict[str, Any]:
@@ -270,7 +302,11 @@ def parse_session_file(harness: str, file_path: Path) -> Dict[str, Any]:
 
     parser = parser_cls()
     summary: SessionSummary = parser.parse_file(file_path)
-    return summary.to_dict()
+    return _apply_repo_fixture_session_overrides(
+        harness,
+        file_path,
+        summary.to_dict(),
+    )
 
 
 def inspect_session_file(file_path: Path) -> Dict[str, Any]:

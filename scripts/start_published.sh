@@ -8,8 +8,12 @@ SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
 
 cd "$PROJECT_ROOT"
+CALLER_PLAYWRIGHT_CHECK_ENABLED="${NEXUS_PLAYWRIGHT_CHECK_ENABLED:-}"
 source "$PROJECT_ROOT/config/runtime.sh"
 load_runtime_config
+if [ -n "$CALLER_PLAYWRIGHT_CHECK_ENABLED" ]; then
+    NEXUS_PLAYWRIGHT_CHECK_ENABLED="$CALLER_PLAYWRIGHT_CHECK_ENABLED"
+fi
 BACKEND_PORT=${NEXUS_BACKEND_PORT}
 PYTHON_BIN=${PYTHON_BIN:-/usr/bin/python3}
 FRONTEND_STANDALONE_SERVER="$PROJECT_ROOT/frontend/.next/standalone/server.js"
@@ -56,12 +60,8 @@ ensure_caddy() {
     fi
 
     caddy validate --config "$PROJECT_ROOT/Caddyfile" >/dev/null
-
-    if caddy reload --config "$PROJECT_ROOT/Caddyfile" >"$CADDY_LOG_FILE" 2>&1; then
-        echo "↻ Caddy reloaded"
-        return 0
-    fi
-
+    pkill -f "caddy run --config $PROJECT_ROOT/Caddyfile" 2>/dev/null || true
+    sleep 1
     caddy start --config "$PROJECT_ROOT/Caddyfile" >"$CADDY_LOG_FILE" 2>&1
     echo "▶ Caddy started"
 }

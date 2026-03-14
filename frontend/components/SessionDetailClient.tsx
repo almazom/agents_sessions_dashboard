@@ -643,6 +643,12 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
       ? 'Resume-allowed включается только когда backend явно разрешает продолжение.'
       : 'Resume появится только после явных harness-specific safety checks.',
   };
+  const interactiveCapability = stateModel.interactive_session ?? {
+    available: false,
+    label: 'Interactive route пока не готов',
+    detail: 'Dedicated browser continuation появляется только после явной capability от backend.',
+    href: null,
+  };
   const timeWindowStartValue = formatSessionWindowValue(
     timeWindow?.started_at_local || session?.started_at_local,
     timeWindow?.started_at || session?.started_at,
@@ -1706,6 +1712,15 @@ export default function SessionDetailClient({ harness, artifactId }: Props) {
                     <div className="font-semibold">{resumeCapability.label}</div>
                     <div className="mt-1 text-nexus-600">{resumeCapability.detail}</div>
                   </div>
+                  {interactiveCapability.available && interactiveCapability.href ? (
+                    <Link
+                      href={interactiveCapability.href}
+                      data-testid="session-detail-interactive-cta"
+                      className="mt-3 inline-flex rounded-full border border-[#c7d6e5] bg-white px-4 py-2 text-sm font-semibold text-nexus-800 transition hover:border-[#94b0ca] hover:text-nexus-900"
+                    >
+                      Open Interactive Route
+                    </Link>
+                  ) : null}
                 </article>
               </div>
             </article>

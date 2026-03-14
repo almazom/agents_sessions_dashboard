@@ -7,6 +7,8 @@ from typing import Any, Dict
 
 from .interactive_artifact_hash import build_artifact_hash_snapshot
 from .interactive_identity import resolve_runtime_identity_from_artifact_route
+from .interactive_replay import add_history_complete_marker, build_replay_event_snapshot
+from .interactive_tail import build_interactive_tail_snapshot
 from .session_artifacts import (
     build_interactive_session_capability,
     build_session_route,
@@ -15,21 +17,6 @@ from .session_artifacts import (
 
 class InteractiveBootPayloadUnavailable(RuntimeError):
     """Raised when the interactive boot payload cannot be produced honestly."""
-
-
-def _build_tail_placeholder() -> Dict[str, Any]:
-    return {
-        "items": [],
-        "summary_hint": None,
-        "has_more_before": False,
-    }
-
-
-def _build_replay_placeholder() -> Dict[str, Any]:
-    return {
-        "items": [],
-        "history_complete": False,
-    }
 
 
 def build_interactive_boot_payload(
@@ -51,6 +38,13 @@ def build_interactive_boot_payload(
         artifact_session_id=session_id,
     )
     artifact_snapshot = build_artifact_hash_snapshot(resolved_artifact_path)
+    tail_snapshot = build_interactive_tail_snapshot(
+        resolved_artifact_path,
+        harness=harness,
+    )
+    replay_snapshot = add_history_complete_marker(
+        build_replay_event_snapshot(resolved_artifact_path)
+    )
 
     return {
         "version": 1,
@@ -70,6 +64,6 @@ def build_interactive_boot_payload(
         "interactive_session": interactive_session,
         "runtime_identity": runtime_mapping["runtime"],
         "artifact": artifact_snapshot,
-        "tail": _build_tail_placeholder(),
-        "replay": _build_replay_placeholder(),
+        "tail": tail_snapshot,
+        "replay": replay_snapshot,
     }

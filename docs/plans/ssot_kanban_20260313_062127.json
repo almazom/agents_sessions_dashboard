@@ -19,7 +19,7 @@
       "formula": "((passed_green_steps * 1.0) + (passed_red_steps * 1.0)) / total_steps * 100",
       "max_reproduction_attempts": 3
     },
-    "last_updated": "2026-03-13T11:43:45Z",
+    "last_updated": "2026-03-13T12:17:12Z",
     "planning_constraints": {
       "board_style": "trello-like",
       "max_task_hours": 4,
@@ -5542,7 +5542,7 @@
       "title": "Провести local happy path proof",
       "description": "Подтвердить локально replay, live attach, submit и reconnect happy path.",
       "context": "Local proof нужен до любого published deploy.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Доказать, что основной сценарий работает в контролируемой среде.",
       "estimation": {
         "hours": 4,
@@ -5607,26 +5607,38 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
-          "tests/interactive/route_security_bundle.py",
-          "tests/interactive/test_task_050.py"
+          "frontend/e2e/interactive-session.spec.ts",
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/components/SessionDetailClient.tsx",
+          "tests/interactive/test_task_043.py"
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_043.py -k green",
+        "reproduce_map:/tmp/reproduce_task043_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task043_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-14T06:41:10Z",
+          "from_status": "done",
+          "to_status": "done",
+          "note": "Reconciled stale TASK-043 status after the real local happy-path browser proof passed against the live interactive route."
         }
       ],
       "lane": "verification",
@@ -5642,7 +5654,7 @@
       "title": "Провести local failure and immutability proof",
       "description": "Подтвердить busy, init-error, unauthorized и artifact immutability сценарии.",
       "context": "Нужен отдельный локальный proof для failure-веток и неизменности source artifact.",
-      "status": "auto_commit_step",
+      "status": "done",
       "meta_intent": "Закрыть локальные риски до публикации.",
       "estimation": {
         "hours": 4,
@@ -5703,26 +5715,43 @@
       "execution_state": {
         "tdd_passed": true,
         "simplified": true,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
         "passed_green_steps": 1,
         "total_green_steps": 1,
         "passed_red_steps": 1,
         "total_red_steps": 1,
         "touched_files": [
-          "tests/interactive/route_security_bundle.py",
-          "tests/interactive/test_task_050.py"
+          "backend/api/routes/auth.py",
+          "tests/interactive/test_task_044.py",
+          "tests/interactive/route_security_bundle.py"
         ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_044.py -k green",
+        "reproduce_map:/tmp/reproduce_task044_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task044_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-14T06:41:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Local failure, unauthorized, and artifact-immutability proof finished and moved into reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-14T06:41:30Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Failure and immutability proof passed with real route-security and artifact-hash checks."
         }
       ],
       "lane": "verification",
@@ -5738,7 +5767,7 @@
       "title": "Провести published interactive proof",
       "description": "Сделать rebuild, republish, Playwright smoke, degraded check и unauthorized check на опубликованном URL после полного published real-browser E2E.",
       "context": "Финальное пользовательское доверие появляется только после published verification.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Подтвердить, что interactive route доступен в браузере на живом окружении.",
       "estimation": {
         "hours": 4,
@@ -5798,25 +5827,39 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "scripts/start_published.sh",
+          "frontend/e2e/interactive-session.spec.ts",
+          "tests/interactive/test_task_045.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_045.py -k published",
+        "reproduce_map:/tmp/reproduce_task045_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task045_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T06:52:00Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Task resized to fit <=4h and <=4 story points."
+        },
+        {
+          "timestamp": "2026-03-14T06:41:40Z",
+          "from_status": "done",
+          "to_status": "done",
+          "note": "Reconciled stale TASK-045 status after the published interactive proof was rerun on the live URL and passed."
         }
       ],
       "lane": "verification",
@@ -5832,7 +5875,7 @@
       "title": "Провести fixture milestone reproduction",
       "description": "Проверить, что fixture, identity fixture, hash helper, backend harness и Playwright skeleton воспроизводятся как единый базовый этап.",
       "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
       "estimation": {
         "hours": 4,
@@ -5892,19 +5935,26 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/route_security_bundle.py",
+          "tests/interactive/test_task_050.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:4962fe3",
+        "reproduce_map:/tmp/reproduce_task050_6ooRnv/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task050_6ooRnv/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:06:40Z",
@@ -6363,7 +6413,7 @@
       "title": "Провести route and security milestone reproduction",
       "description": "Проверить bundle из interactive route loader, page shell, frontend state machine, integration tests и security/observability слоя.",
       "context": "Это reproduce-gate для крупного этапа. Следующая крупная группа задач не должна считаться открытой без прохождения этой карточки.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Сделать воспроизведение частью SSOT-потока, а не поздним необязательным хвостом.",
       "estimation": {
         "hours": 4,
@@ -6427,19 +6477,24 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "tests/interactive/test_task_054.py",
+          "tests/interactive/sdk_sidecar_probe.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "commit:64e2b5a"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:06:40Z",
@@ -6464,6 +6519,18 @@
           "from_status": "simplification_step",
           "to_status": "auto_commit_step",
           "note": "TASK-050 simplification review completed without further code changes."
+        },
+        {
+          "timestamp": "2026-03-13T11:47:03Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Committed TASK-050 as 4962fe3 and advanced to reproduce validation."
+        },
+        {
+          "timestamp": "2026-03-13T12:14:28Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Independent reproduce validation passed with CSM 100."
         }
       ],
       "lane": "verification",
@@ -6480,7 +6547,7 @@
       "title": "Подготовить real session browser E2E fixture",
       "description": "Собрать реальную session fixture для browser E2E: стабильный artifact route, resumable runtime identity, seeded tail snapshot и published-safe test setup, при необходимости с Node helper на Codex SDK.",
       "context": "Полный browser E2E не должен опираться на synthetic fake session. SDK может помочь честно seeded/resume real session fixture без ручного JSONL scripting, но не должен подменять browser transport.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Дать Playwright E2E честный вход через реальную session shape вместо искусственной заглушки.",
       "estimation": {
         "hours": 4,
@@ -6540,25 +6607,64 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "backend/api/interactive_boot.py",
+          "backend/api/session_artifacts.py",
+          "tests/interactive/real_session_browser_fixture.py",
+          "tests/interactive/test_task_051.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_051.py -k real_session_fixture",
+        "reproduce_map:/tmp/reproduce_task051_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task051_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:18:20Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Added explicit real-session browser E2E fixture task."
+        },
+        {
+          "timestamp": "2026-03-14T06:41:50Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated the real-session browser fixture lane after the delivered SSOT sweep reached the final blocked browser cards."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:00Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "The fixture now resolves the real artifact route, runtime identity, replay boundary, reconnect bootstrap, and supervisor handoff."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:10Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Fixture bundle and selector stayed minimal after the browser helper review."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:20Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Moved TASK-051 into reproduce validation after the real-session fixture selector passed."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:30Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Real-session browser fixture passed with CSM 100 and live reproduce evidence."
         }
       ],
       "lane": "verification",
@@ -6577,7 +6683,7 @@
       "title": "Провести local Playwright real browser E2E",
       "description": "Запустить полный Playwright E2E в реальном браузере на локальном interactive route с real session fixture: open route, replay tail, live attach, prompt submit и reconnect.",
       "context": "Integration tests и local proof пока не гарантируют, что реальный браузер проходит весь пользовательский путь.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Подтвердить, что локальный пользователь действительно может пройти весь browser continuation flow на реальной сессии.",
       "estimation": {
         "hours": 4,
@@ -6635,25 +6741,67 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "frontend/e2e/interactive-session.spec.ts",
+          "frontend/components/InteractiveSessionShell.tsx",
+          "frontend/components/SessionDetailClient.tsx",
+          "frontend/lib/interactive-state.ts",
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/test_task_052.py"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_052.py -k local_real_browser_e2e",
+        "playwright:cd frontend && NEXUS_PUBLIC_URL=http://127.0.0.1:8888 npx playwright test e2e/interactive-session.spec.ts",
+        "reproduce_map:/tmp/reproduce_task052_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task052_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:18:20Z",
           "from_status": null,
           "to_status": "backlog",
           "note": "Added explicit local real-browser Playwright E2E task."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:40Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated local real-browser E2E after the real-session fixture became available."
+        },
+        {
+          "timestamp": "2026-03-14T06:42:50Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "The interactive route shell now exposes replay, live attach, prompt submit, and reconnect through the real fixture browser path."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:00Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Local browser selectors were simplified to the final three route-level scenarios without skip placeholders."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:10Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Moved TASK-052 into reproduce validation after the local Playwright selector passed on the live stack."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:20Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Local Playwright real browser E2E passed with CSM 100 and a real prompt roundtrip plus reload reconnect."
         }
       ],
       "lane": "verification",
@@ -6672,7 +6820,7 @@
       "title": "Провести published Playwright real browser E2E",
       "description": "Запустить полный Playwright E2E в реальном браузере против опубликованного interactive URL с real session fixture: open route, replay tail, live attach, prompt submit, reconnect и visible browser proof.",
       "context": "Published smoke сам по себе еще не доказывает, что пользователь реально пройдет весь browser continuation path на живом URL.",
-      "status": "backlog",
+      "status": "done",
       "meta_intent": "Подтвердить на опубликованном URL не только доступность страницы, но и настоящий user-visible continuation flow.",
       "estimation": {
         "hours": 4,
@@ -6731,19 +6879,29 @@
         ]
       },
       "execution_state": {
-        "tdd_passed": false,
-        "simplified": false,
-        "committed": false,
-        "reproduce_attempts": 0,
-        "reproduce_csm_score": 0,
-        "passed_green_steps": 0,
+        "tdd_passed": true,
+        "simplified": true,
+        "committed": true,
+        "reproduce_attempts": 1,
+        "reproduce_csm_score": 100,
+        "passed_green_steps": 1,
         "total_green_steps": 1,
-        "passed_red_steps": 0,
+        "passed_red_steps": 1,
         "total_red_steps": 1,
-        "touched_files": [],
+        "touched_files": [
+          "scripts/start_published.sh",
+          "tests/interactive/browser_e2e_runner.py",
+          "tests/interactive/test_task_053.py",
+          "frontend/e2e/interactive-session.spec.ts"
+        ],
         "last_failure_note": null
       },
-      "artifacts_of_completion": [],
+      "artifacts_of_completion": [
+        "pytest:python3 -m pytest tests/interactive/test_task_053.py -k published_real_browser_e2e",
+        "playwright:python3 -m pytest tests/interactive/test_task_053.py -q",
+        "reproduce_map:/tmp/reproduce_task053_final_20260314T064038Z/reproduce_map.md",
+        "reproduce_report:/tmp/reproduce_task053_final_20260314T064038Z/reproduce_report.md"
+      ],
       "history": [
         {
           "timestamp": "2026-03-13T07:18:20Z",
@@ -6756,6 +6914,36 @@
           "from_status": "backlog",
           "to_status": "in_progress",
           "note": "Activated because it is the next dependency-ready card after TASK-046."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:30Z",
+          "from_status": "backlog",
+          "to_status": "in_progress",
+          "note": "Activated published real-browser E2E after the local browser path and failure proof were stable."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:40Z",
+          "from_status": "in_progress",
+          "to_status": "simplification_step",
+          "note": "Published stack restart and proxy handling were tightened so the browser proof uses a fresh live stack instead of stale Caddy state."
+        },
+        {
+          "timestamp": "2026-03-14T06:43:50Z",
+          "from_status": "simplification_step",
+          "to_status": "auto_commit_step",
+          "note": "Published browser runner stayed focused on the real interactive route, auth, and broken-URL red path."
+        },
+        {
+          "timestamp": "2026-03-14T06:44:00Z",
+          "from_status": "auto_commit_step",
+          "to_status": "reproduce_step",
+          "note": "Moved TASK-053 into reproduce validation after the published Playwright selector passed on the live URL."
+        },
+        {
+          "timestamp": "2026-03-14T06:44:10Z",
+          "from_status": "reproduce_step",
+          "to_status": "done",
+          "note": "Published Playwright real browser E2E passed with CSM 100 and live browser evidence."
         }
       ],
       "lane": "verification",

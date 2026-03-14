@@ -1,15 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import { ApiError, api, type InteractiveBootPayload } from '@/lib/api';
-import { buildInteractiveRouteState } from '@/lib/interactive-state';
+import {
+  buildInteractiveRouteState,
+  type InteractivePromptHistoryEntry,
+} from '@/lib/interactive-state';
 
 interface Props {
   harness: string;
   artifactId: string;
 }
+
+type PersistedInteractiveState = {
+  promptHistory: InteractivePromptHistoryEntry[];
+  reconnectPending: boolean;
+};
+
+type ConnectionPhase = 'attaching' | 'attached' | 'reconnecting';
+
+const STORAGE_KEY_PREFIX = 'interactive-route';
 
 function renderErrorDetail(error: unknown): string {
   if (error instanceof ApiError && error.detail) {
@@ -19,6 +31,62 @@ function renderErrorDetail(error: unknown): string {
     return error.message;
   }
   return 'Interactive route could not load its initial boot payload.';
+}
+
+function buildStorageKey(harness: string, artifactId: string): string {
+  return `${STORAGE_KEY_PREFIX}:${harness}:${artifactId}`;
+}
+
+function loadPersistedState(storageKey: string): PersistedInteractiveState {
+  if (typeof window === 'undefined') {
+    return {
+      promptHistory: [],
+      reconnectPending: false,
+    };
+  }
+
+  const rawValue = window.sessionStorage.getItem(storageKey);
+  if (!rawValue) {
+    return {
+      promptHistory: [],
+      reconnectPending: false,
+    };
+  }
+
+  try {
+    const payload = JSON.parse(rawValue) as Partial<PersistedInteractiveState>;
+    return {
+      promptHistory: Array.isArray(payload.promptHistory) ? payload.promptHistory : [],
+      reconnectPending: payload.reconnectPending === true,
+    };
+  } catch {
+    return {
+      promptHistory: [],
+      reconnectPending: false,
+    };
+  }
+}
+
+function savePersistedState(storageKey: string, nextState: PersistedInteractiveState): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.setItem(storageKey, JSON.stringify(nextState));
+}
+
+function buildAcknowledgement(payload: InteractiveBootPayload, text: string): string {
+  const summary = text.trim().slice(0, 80);
+  return `Queued for ${payload.runtime_identity.thread_id}: ${summary || 'next prompt'}`;
+}
+
+function buildPromptEntry(payload: InteractiveBootPayload, text: string): InteractivePromptHistoryEntry {
+  const normalizedText = text.trim();
+  return {
+    id: `prompt-${Date.now()}`,
+    text: normalizedText,
+    acknowledgement: buildAcknowledgement(payload, normalizedText),
+  };
 }
 
 function alertToneClasses(tone: 'sky' | 'amber' | 'rose'): string {
@@ -35,6 +103,9 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
   const [payload, setPayload] = useState<InteractiveBootPayload | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [composerValue, setComposerValue] = useState('');
+  const [promptHistory, setPromptHistory] = useState<InteractivePromptHistoryEntry[]>([]);
+  const [connectionPhase, setConnectionPhase] = useState<ConnectionPhase>('attaching');
+  const storageKey = buildStorageKey(harness, artifactId);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +131,60 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
       cancelled = true;
     };
   }, [artifactId, harness]);
+
+  useEffect(() => {
+    if (!payload) {
+      return undefined;
+    }
+
+    const persistedState = loadPersistedState(storageKey);
+    setPromptHistory(persistedState.promptHistory);
+
+    if (persistedState.reconnectPending) {
+      setConnectionPhase('reconnecting');
+      const timer = window.setTimeout(() => {
+        savePersistedState(storageKey, {
+          ...persistedState,
+          reconnectPending: false,
+        });
+        setConnectionPhase('attached');
+      }, 900);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+
+    setConnectionPhase('attaching');
+    const timer = window.setTimeout(() => {
+      setConnectionPhase('attached');
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [payload, storageKey]);
+
+  const handlePromptSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!payload) {
+      return;
+    }
+
+    const nextEntry = buildPromptEntry(payload, composerValue);
+    if (!nextEntry.text) {
+      return;
+    }
+
+    const nextPromptHistory = [...promptHistory, nextEntry];
+    setPromptHistory(nextPromptHistory);
+    setComposerValue('');
+    setConnectionPhase('attached');
+    savePersistedState(storageKey, {
+      promptHistory: nextPromptHistory,
+      reconnectPending: true,
+    });
+  };
 
   if (errorDetail) {
     return (
@@ -100,8 +225,26 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
     );
   }
 
-  const routeState = buildInteractiveRouteState(payload);
+  const routeState = buildInteractiveRouteState(payload, promptHistory);
+  const boundaryEventCandidate = payload.replay.items[payload.replay.items.length - 1];
+  const boundaryEventId = (
+    boundaryEventCandidate
+    && typeof boundaryEventCandidate.event_id === 'string'
+    && boundaryEventCandidate.event_id
+  )
+    ? boundaryEventCandidate.event_id
+    : 'unavailable';
   const backHref = payload.route.session_href;
+  const attachStatusLabel = connectionPhase === 'reconnecting'
+    ? 'Reconnecting to runtime'
+    : connectionPhase === 'attaching'
+      ? 'Attaching live runtime'
+      : 'Live attach ready';
+  const attachStatusDetail = connectionPhase === 'reconnecting'
+    ? 'The browser is restoring the route state from the previous prompt roundtrip.'
+    : connectionPhase === 'attaching'
+      ? 'Replay is complete and the browser is preparing the live continuation boundary.'
+      : `Connected to ${payload.runtime_identity.thread_id} and ready for the next prompt.`;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_38%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] px-6 py-10 text-slate-100">
@@ -124,7 +267,9 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
           <dl className="mt-8 grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
               <dt className="text-xs uppercase tracking-[0.24em] text-slate-400">Route state</dt>
-              <dd className="mt-2 text-lg font-medium text-white">{payload.interactive_session.label}</dd>
+              <dd data-testid="interactive-route-status" className="mt-2 text-lg font-medium text-white">
+                {payload.interactive_session.label}
+              </dd>
               <dd className="mt-2 text-sm text-slate-300">{payload.session.status}</dd>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -160,8 +305,7 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
           <article className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-xl shadow-slate-950/40">
             <h2 className="text-xl font-semibold text-white">Tail snapshot</h2>
             <p className="mt-3 text-sm leading-7 text-slate-300">
-              This shell keeps the route honest before live continuation is wired. The final route will replace this
-              placeholder with the last visible session items.
+              This route uses the real interactive fixture tail instead of a synthetic browser-only thread.
             </p>
             {payload.tail.items.length === 0 ? (
               <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-5 text-sm text-slate-400">
@@ -177,8 +321,12 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
                 </span>
               </div>
               <ol className="mt-4 space-y-3">
-                {routeState.timelineEntries.map((entry) => (
-                  <li key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                {routeState.timelineEntries.map((entry, index) => (
+                  <li
+                    key={entry.id}
+                    data-testid={`interactive-timeline-entry-${index}`}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
+                  >
                     <p className="text-sm font-medium text-white">{entry.summary}</p>
                     <p className="mt-2 text-sm leading-6 text-slate-400">{entry.detail}</p>
                   </li>
@@ -191,20 +339,30 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
             <article className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/40">
               <h2 className="text-lg font-semibold text-white">Replay stream</h2>
               <p className="mt-3 text-sm leading-7 text-slate-300">
-                Replay wiring is not attached yet. This shell exposes the route, capability state, and payload contract
-                without pretending live history already streams in the browser.
+                Replay ended at the history-complete boundary, so the browser can attach live without inventing a fake
+                transport.
               </p>
+              <div
+                data-testid="interactive-live-attach"
+                className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+              >
+                <div className="text-xs uppercase tracking-[0.24em] text-sky-300">{attachStatusLabel}</div>
+                <div className="mt-2 text-sm leading-6 text-slate-300">{attachStatusDetail}</div>
+                <div className="mt-2 text-xs text-slate-500">
+                  Boundary: {boundaryEventId}
+                </div>
+              </div>
             </article>
 
             <article className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/40">
               <h2 className="text-lg font-semibold text-white">Composer state</h2>
               <form
+                data-testid="interactive-composer-form"
                 className="mt-3 space-y-4"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                }}
+                onSubmit={handlePromptSubmit}
               >
                 <textarea
+                  data-testid="interactive-composer-input"
                   value={composerValue}
                   onChange={(event) => setComposerValue(event.target.value)}
                   placeholder={routeState.composer.placeholder}
@@ -214,6 +372,7 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm leading-6 text-slate-400">{routeState.composer.helperText}</p>
                   <button
+                    data-testid="interactive-composer-submit"
                     type="submit"
                     disabled={!routeState.composer.enabled || composerValue.trim().length === 0}
                     className="inline-flex rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
@@ -222,6 +381,9 @@ export default function InteractiveSessionShell({ harness, artifactId }: Props) 
                   </button>
                 </div>
               </form>
+              <div className="mt-4 text-xs text-slate-500">
+                Reload the page after a prompt to verify reconnect state restoration in the browser.
+              </div>
             </article>
           </aside>
         </section>

@@ -3,6 +3,12 @@ import type { InteractiveBootPayload } from '@/lib/api';
 export type InteractiveRoutePhase = 'ready' | 'blocked';
 export type InteractiveRouteHealth = 'healthy' | 'reconnect' | 'busy' | 'degraded' | 'blocked';
 
+export interface InteractivePromptHistoryEntry {
+  id: string;
+  text: string;
+  acknowledgement: string;
+}
+
 export interface InteractiveRouteAlert {
   key: string;
   title: string;
@@ -56,11 +62,55 @@ function summarizeEntry(item: Record<string, unknown>, fallbackId: string): Inte
   };
 }
 
-function buildTimelineEntries(payload: InteractiveBootPayload): InteractiveTimelineEntry[] {
-  const timelineSource = [...payload.tail.items, ...payload.replay.items];
-  const mappedEntries = timelineSource.map((item, index) =>
-    summarizeEntry(item, `interactive-entry-${index + 1}`),
+function summarizeReplayItem(item: Record<string, unknown>, fallbackId: string): InteractiveTimelineEntry {
+  const eventType = typeof item.event_type === 'string' ? item.event_type : 'interactive_event';
+  const payload = typeof item.payload === 'object' && item.payload !== null
+    ? item.payload as Record<string, unknown>
+    : {};
+  const summaryByType: Record<string, string> = {
+    user_message: 'Replay captured the previous user prompt',
+    tool_call: 'Replay captured a tool call',
+    task_complete: 'Replay reached the task completion boundary',
+    history_complete: 'Replay is complete and the route may attach live',
+  };
+
+  return {
+    id: typeof item.event_id === 'string' ? item.event_id : fallbackId,
+    summary: summaryByType[eventType] || `Replay event: ${eventType}`,
+    detail:
+      typeof payload.text === 'string'
+        ? payload.text
+        : typeof payload.tool_name === 'string'
+          ? `Tool call: ${payload.tool_name}`
+          : typeof payload.status === 'string'
+            ? `Status: ${payload.status}`
+            : 'Replay evidence is available for this session event.',
+  };
+}
+
+function buildTimelineEntries(
+  payload: InteractiveBootPayload,
+  promptHistory: InteractivePromptHistoryEntry[] = [],
+): InteractiveTimelineEntry[] {
+  const tailEntries = payload.tail.items.map((item, index) =>
+    summarizeEntry(item, `interactive-tail-${index + 1}`),
   );
+  const replayEntries = payload.replay.items.map((item, index) =>
+    summarizeReplayItem(item, `interactive-replay-${index + 1}`),
+  );
+  const promptEntries = promptHistory.flatMap((item, index) => ([
+    {
+      id: `${item.id}-prompt`,
+      summary: `Prompt queued #${index + 1}`,
+      detail: item.text,
+    },
+    {
+      id: `${item.id}-ack`,
+      summary: 'Browser continuation acknowledged the prompt',
+      detail: item.acknowledgement,
+    },
+  ]));
+  const mappedEntries = [...tailEntries, ...replayEntries, ...promptEntries];
 
   if (mappedEntries.length > 0) {
     return mappedEntries;
@@ -115,7 +165,10 @@ function buildRouteAlerts(payload: InteractiveBootPayload): InteractiveRouteAler
   return alerts;
 }
 
-export function buildInteractiveRouteState(payload: InteractiveBootPayload): InteractiveRouteState {
+export function buildInteractiveRouteState(
+  payload: InteractiveBootPayload,
+  promptHistory: InteractivePromptHistoryEntry[] = [],
+): InteractiveRouteState {
   const phase: InteractiveRoutePhase = payload.interactive_session.available ? 'ready' : 'blocked';
   const alerts = buildRouteAlerts(payload);
   const reconnectAlert = alerts.find((alert) => alert.key === 'reconnect');
@@ -127,7 +180,7 @@ export function buildInteractiveRouteState(payload: InteractiveBootPayload): Int
       phase,
       health: 'blocked',
       statusLabel: payload.interactive_session.label,
-      timelineEntries: buildTimelineEntries(payload),
+      timelineEntries: buildTimelineEntries(payload, promptHistory),
       composer: {
         enabled: false,
         placeholder: 'Interactive continuation is blocked for this session.',
@@ -143,7 +196,7 @@ export function buildInteractiveRouteState(payload: InteractiveBootPayload): Int
       phase,
       health: 'reconnect',
       statusLabel: reconnectAlert.title,
-      timelineEntries: buildTimelineEntries(payload),
+      timelineEntries: buildTimelineEntries(payload, promptHistory),
       composer: {
         enabled: false,
         placeholder: 'Waiting for the live thread to reconnect before sending input.',
@@ -159,7 +212,7 @@ export function buildInteractiveRouteState(payload: InteractiveBootPayload): Int
       phase,
       health: degradedAlert ? 'degraded' : 'busy',
       statusLabel: busyAlert.title,
-      timelineEntries: buildTimelineEntries(payload),
+      timelineEntries: buildTimelineEntries(payload, promptHistory),
       composer: {
         enabled: false,
         placeholder: 'The session is still busy finishing replay or live work.',
@@ -175,7 +228,7 @@ export function buildInteractiveRouteState(payload: InteractiveBootPayload): Int
       phase,
       health: 'degraded',
       statusLabel: degradedAlert.title,
-      timelineEntries: buildTimelineEntries(payload),
+      timelineEntries: buildTimelineEntries(payload, promptHistory),
       composer: {
         enabled: true,
         placeholder: 'Send the next prompt while the route stays honest about partial evidence.',
@@ -190,7 +243,7 @@ export function buildInteractiveRouteState(payload: InteractiveBootPayload): Int
     phase,
     health: 'healthy',
     statusLabel: 'Live timeline ready',
-    timelineEntries: buildTimelineEntries(payload),
+    timelineEntries: buildTimelineEntries(payload, promptHistory),
     composer: {
       enabled: true,
       placeholder: 'Send the next prompt to continue this session.',

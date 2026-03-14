@@ -11,7 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PLAYWRIGHT_CONFIG_PATH = REPO_ROOT / "frontend" / "playwright.config.ts"
 PLAYWRIGHT_SPEC_PATH = REPO_ROOT / "frontend" / "e2e" / "interactive-session.spec.ts"
 PLAYWRIGHT_COMMAND = "cd frontend && npx playwright test e2e/interactive-session.spec.ts"
-SCENARIO_PATTERN = re.compile(r"""test\.skip\(\s*['"]([^'"]+)['"]""")
+SCENARIO_PATTERN = re.compile(r"""test(?:\.skip)?\(\s*['"]([^'"]+)['"]""")
 
 
 class InteractivePlaywrightSkeletonNotFound(FileNotFoundError):
